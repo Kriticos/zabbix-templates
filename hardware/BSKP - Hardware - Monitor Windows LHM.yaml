@@ -14,69 +14,91 @@ zabbix_export:
         - name: 'bskp Templates'
       items:
         - uuid: ec75fbc0e5fe4f5b8fd7f27e54a53c07
-          name: Hostname
+          name: 'Zabbix agent hostname'
           key: agent.hostname
           value_type: CHAR
+          description: 'The host name of the Zabbix agent running on the host.'
           tags:
-            - tag: System
+            - tag: component
+              value: system
         - uuid: 9aa40c3676c94610ae90c8a0baef72b9
           name: 'Zabbix agent ping'
           key: agent.ping
           description: 'The agent always returns "1" for this item. May be used in combination with `nodata()` for the availability check.'
           tags:
-            - tag: Zabbix
+            - tag: component
+              value: zabbix
+            - tag: service
+              value: agent
         - uuid: 122adc1238ee4232912542c2fa603fc4
-          name: 'Network Gateway - Packet Loss(%)'
+          name: 'Gateway packet loss'
           type: SIMPLE
           key: 'icmppingloss[{$GW_IP}]'
           value_type: FLOAT
           units: '%'
+          description: 'ICMP packet loss to the default gateway.'
           tags:
-            - tag: Networki
+            - tag: component
+              value: network
           triggers:
             - uuid: 8d3fb9ca9c8e4da2b6f45d363cee5dbf
-              expression: 'last(/BSKP - Hardware - Monitor Windows LHM/icmppingloss[{$GW_IP}])>20'
-              name: '{HOST.NAME}: Gateway with high packet loss (>20%)'
+              expression: 'last(/BSKP - Hardware - Monitor Windows LHM/icmppingloss[{$GW_IP}])>{$NET.GW.LOSS.MAX}'
+              name: '{HOST.NAME}: Gateway with high packet loss (>{$NET.GW.LOSS.MAX}%)'
               priority: WARNING
               tags:
-                - tag: Network
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: performance
         - uuid: 54823dcdbf194e738953a9ea4931d3d4
-          name: 'Network Latency'
+          name: 'Network latency'
           type: SIMPLE
-          key: 'icmppingsec[8.8.8.8]'
+          key: 'icmppingsec[{$NET.PING.TARGET}]'
           value_type: FLOAT
+          description: 'ICMP response time to an external target.'
           tags:
-            - tag: Network
+            - tag: component
+              value: network
           triggers:
             - uuid: 01863a542fe3430cb1365d76f351aa8d
-              expression: 'avg(/BSKP - Hardware - Monitor Windows LHM/icmppingsec[8.8.8.8],5m) > 0.2'
-              name: '{HOST.NAME}: High network latency (> 200ms)'
+              expression: 'avg(/BSKP - Hardware - Monitor Windows LHM/icmppingsec[{$NET.PING.TARGET}],5m)>{$NET.PING.LAT.MAX}'
+              name: '{HOST.NAME}: High network latency (>{$NET.PING.LAT.MAX}s)'
               priority: HIGH
               manual_close: 'YES'
               tags:
-                - tag: Network
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: performance
         - uuid: e9f781552c9242f4a5d2ab0c2e75b6c0
-          name: 'Network Gateway - Latency(s)'
+          name: 'Gateway latency'
           type: SIMPLE
           key: 'icmppingsec[{$GW_IP}]'
           value_type: FLOAT
           units: s
+          description: 'ICMP response time to the default gateway.'
           tags:
-            - tag: Network
+            - tag: component
+              value: network
           triggers:
             - uuid: 1f8f94f3a4834094a2ba798cd6623da1
-              expression: 'avg(/BSKP - Hardware - Monitor Windows LHM/icmppingsec[{$GW_IP}],5m)>0.05'
-              name: '{HOST.NAME}: Gateway with high latency (>50ms per 5m)'
+              expression: 'avg(/BSKP - Hardware - Monitor Windows LHM/icmppingsec[{$GW_IP}],5m)>{$NET.GW.LAT.MAX}'
+              name: '{HOST.NAME}: Gateway with high latency (>{$NET.GW.LAT.MAX}s per 5m)'
               status: DISABLED
               priority: INFO
               tags:
-                - tag: Network
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: performance
         - uuid: a9eff6924a3d403cb3d1715bb2c7edf9
-          name: 'Network Gateway - Availability(ping)'
+          name: 'Gateway availability'
           type: SIMPLE
           key: 'icmpping[{$GW_IP}]'
+          description: 'ICMP reachability of the default gateway.'
           tags:
-            - tag: Network
+            - tag: component
+              value: network
           triggers:
             - uuid: e3612c200cb24208aa00a73c4d335578
               expression: 'min(/BSKP - Hardware - Monitor Windows LHM/icmpping[{$GW_IP}],#3)=0'
@@ -84,13 +106,17 @@ zabbix_export:
               priority: HIGH
               manual_close: 'YES'
               tags:
-                - tag: Network
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: availability
         - uuid: ec674211c6724050bf701a788b25bf2d
-          name: 'CPU - Power Package'
+          name: 'CPU power package'
           type: DEPENDENT
           key: librehw.cpu.power.package
           value_type: FLOAT
           units: W
+          description: 'CPU package power draw.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -105,13 +131,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
+            - tag: service
+              value: lhm
         - uuid: 82a02335f48c41b6acc6bac794b469df
-          name: 'CPU - Temp'
+          name: 'CPU temperature'
           type: DEPENDENT
           key: librehw.cpu.temp.inteira
           value_type: FLOAT
-          units: °C
+          units: C
+          description: 'CPU temperature.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -126,22 +156,30 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
+            - tag: service
+              value: lhm
         - uuid: 6a2e3110f454440195a0a17267eadc4b
-          name: 'LibreHW - Data JSON'
+          name: 'Libre Hardware Monitor data'
           type: HTTP_AGENT
           key: librehw.data.json
           delay: 30s
           value_type: TEXT
           url: '{$LHM.URL}'
+          description: 'Raw Libre Hardware Monitor data in JSON format.'
           tags:
-            - tag: LHM
+            - tag: component
+              value: hardware
+            - tag: service
+              value: lhm
         - uuid: 900d520e4ef346e2bc1ffb2023be5de7
-          name: 'GPU - utilization'
+          name: 'GPU utilization'
           type: DEPENDENT
           key: librehw.gpu.load.core
           value_type: FLOAT
           units: '%'
+          description: 'GPU utilization.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -156,13 +194,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: 96f277eed8b44263a9f0f9996ed3ea04
-          name: 'GPU - Power Package'
+          name: 'GPU power package'
           type: DEPENDENT
           key: librehw.gpu.power.package
           value_type: FLOAT
           units: W
+          description: 'GPU package power draw.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -177,13 +219,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: 7eabe19a44694292aeb657dbbebd6b63
-          name: 'GPU - Temp Core'
+          name: 'GPU temperature (core)'
           type: DEPENDENT
           key: librehw.gpu.temp.core
           value_type: FLOAT
-          units: °C
+          units: C
+          description: 'GPU core temperature.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -198,13 +244,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: db79eb066aee4dfc85cc0976cd5d6664
-          name: 'GPU - Temp Hotspot'
+          name: 'GPU temperature (hotspot)'
           type: DEPENDENT
           key: librehw.gpu.temp.hotspot
           value_type: FLOAT
-          units: °C
+          units: C
+          description: 'GPU hotspot temperature.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -219,13 +269,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: 0f1744f7f52e436fa3653a5eed790cbf
-          name: 'GPU - vRAM free'
+          name: 'GPU VRAM free'
           type: DEPENDENT
           key: librehw.gpu.vram.free
           value_type: FLOAT
           units: MB
+          description: 'Free GPU video memory.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -240,13 +294,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: 2d4f74536bd642b7b96bca53bde29022
-          name: 'GPU - vRAM total'
+          name: 'GPU VRAM total'
           type: DEPENDENT
           key: librehw.gpu.vram.total
           value_type: FLOAT
           units: MB
+          description: 'Total GPU video memory.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -261,13 +319,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: 88ad44bafb684c459e6067d00a664b00
-          name: 'GPU - vRAM used'
+          name: 'GPU VRAM used'
           type: DEPENDENT
           key: librehw.gpu.vram.used
           value_type: FLOAT
           units: MB
+          description: 'Used GPU video memory.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -282,22 +344,30 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: d5122dc62fdf4f748b257f2657cd3ef0
-          name: 'GPU - vRAM utilization'
+          name: 'GPU VRAM utilization'
           type: CALCULATED
           key: librehw.gpu.vram.used.percent
           value_type: FLOAT
           units: '%'
           params: '100 * last(//librehw.gpu.vram.used) / last(//librehw.gpu.vram.total)'
+          description: 'GPU video memory utilization.'
           tags:
-            - tag: GPU
+            - tag: component
+              value: gpu
+            - tag: service
+              value: lhm
         - uuid: 5858c8e0ea3a4ae59756391d0c583099
-          name: 'NVMe - Temp'
+          name: 'NVMe temperature'
           type: DEPENDENT
           key: librehw.nvme.temp
           value_type: FLOAT
-          units: °C
+          units: C
+          description: 'NVMe temperature.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -312,13 +382,17 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: NVMe
+            - tag: component
+              value: storage
+            - tag: service
+              value: lhm
         - uuid: c10dbccbca9545cdadc30ccad1684382
-          name: 'CMOS Battery'
+          name: 'CMOS battery voltage'
           type: DEPENDENT
           key: librehw.voltage.cmos
           value_type: FLOAT
           units: V
+          description: 'CMOS battery voltage.'
           preprocessing:
             - type: JSONPATH
               parameters:
@@ -333,7 +407,12 @@ zabbix_export:
           master_item:
             key: librehw.data.json
           tags:
-            - tag: Motherboard
+            - tag: component
+              value: hardware
+            - tag: service
+              value: lhm
+            - tag: sensor
+              value: cmos
           triggers:
             - uuid: 1c186ae8c6ce4448ac17813fcfd7436a
               expression: 'last(/BSKP - Hardware - Monitor Windows LHM/librehw.voltage.cmos)<=2.7'
@@ -345,34 +424,44 @@ zabbix_export:
                 Replace the CMOS (RTC) battery to prevent BIOS settings loss and clock resets.
               manual_close: 'YES'
               tags:
-                - tag: Motherboard
-                  value: CMOS
+                - tag: component
+                  value: hardware
+                - tag: scope
+                  value: health
+                - tag: sensor
+                  value: cmos
         - uuid: 3a5f93b73a644e2191942e40c8af14b9
-          name: 'Net RX Total'
+          name: 'Network RX total'
           key: 'net.if.in[{$NET.IFACE}]'
           units: B
+          description: 'Total incoming network traffic on the selected interface.'
           tags:
-            - tag: Network
+            - tag: component
+              value: network
         - uuid: 51e91d136b4f4a01a256cf7ebdce7b3f
-          name: 'Net TX Total'
+          name: 'Network TX total'
           key: 'net.if.out[{$NET.IFACE}]'
           units: B
+          description: 'Total outgoing network traffic on the selected interface.'
           tags:
-            - tag: Network
+            - tag: component
+              value: network
         - uuid: c4b34b5082cd4f9fa45dc243dd34982b
-          name: 'Used swap space in %'
+          name: 'Swap usage'
           key: 'perf_counter_en["\Paging file(_Total)\% Usage"]'
           units: '%'
-          description: 'The used space of swap volume/file in percent.'
+          description: 'Swap space utilization in percent.'
           tags:
-            - tag: 'File System'
+            - tag: component
+              value: memory
         - uuid: 4dc99c667bfa4ac99067fdffdd43ed7b
-          name: 'CPU - interrupt time'
+          name: 'CPU interrupt time'
           key: 'perf_counter_en["\Processor Information(_total)\% Interrupt Time"]'
           units: '%'
-          description: 'The processor information `% Interrupt Time` counter indicates how much time the processor spends handling hardware interrupts during sample intervals. It reflects the activity of devices like the system clock, mouse, disk drivers, and network cards. A value above 20% suggests possible hardware issues.'
+          description: 'Percentage of time the CPU spends handling hardware interrupts.'
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
           triggers:
             - uuid: 7ef093ca800a481ca4bdb11c4ef2c7e2
               expression: 'min(/BSKP - Hardware - Monitor Windows LHM/perf_counter_en["\Processor Information(_total)\% Interrupt Time"],5m)>{$CPU.INTERRUPT.CRIT.MAX}'
@@ -393,14 +482,18 @@ zabbix_export:
                 Check the "Interrupts" and "DPC" columns in Windows Performance Monitor (perfmon) or Resource Monitor, and update or disable problematic drivers or devices.
               manual_close: 'YES'
               tags:
-                - tag: CPU
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
         - uuid: 9a74c22d1ae348a3934c1bd8639e7bff
-          name: 'CPU - privileged time'
+          name: 'CPU privileged time'
           key: 'perf_counter_en["\Processor Information(_total)\% Privileged Time"]'
           units: '%'
-          description: 'The processor information `% Privileged Time` counter shows the percent of time that the processor is spent executing in Kernel (or Privileged) mode. Privileged mode includes services interrupts inside Interrupt Service Routines (ISRs), executing Deferred Procedure Calls (DPCs), Device Driver calls and other kernel-mode functions of the Windows Operating System.'
+          description: 'Percentage of time the CPU spends in privileged (kernel) mode.'
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
           triggers:
             - uuid: abc23bd0619b4de38790d428cbe6ba3a
               expression: 'min(/BSKP - Hardware - Monitor Windows LHM/perf_counter_en["\Processor Information(_total)\% Privileged Time"],5m)>{$CPU.PRIV.CRIT.MAX}'
@@ -422,37 +515,47 @@ zabbix_export:
                 Update or disable problematic drivers or services, and verify that no hardware component is generating excessive interrupts.
               manual_close: 'YES'
               tags:
-                - tag: CPU
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
         - uuid: bb067029ba284a96ad4fa1151eae4cde
-          name: 'CPU - queue length'
+          name: 'CPU queue length'
           key: 'perf_counter_en["\System\Processor Queue Length"]'
           value_type: FLOAT
-          description: 'The Processor Queue Length shows the number of threads that are observed as delayed in the processor Ready Queue and are waiting to be executed.'
+          description: 'Number of threads waiting for CPU time.'
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
         - uuid: b30896f154cd4f828688ee74a4f66c71
           name: 'Number of threads'
           key: 'perf_counter_en["\System\Threads"]'
           description: 'The number of threads used by all running processes.'
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
         - uuid: cefece5ed87e4190bbe08bd62ad4acd0
           name: 'Number of processes'
           key: 'proc.num[]'
           description: 'The number of processes.'
           tags:
-            - tag: Windows
+            - tag: component
+              value: system
+            - tag: os
+              value: windows
         - uuid: 13d839f73c804f3dae4bf2225d9c3f70
-          name: 'CPU - utilization'
+          name: 'CPU utilization'
           key: system.cpu.util
           value_type: FLOAT
           units: '%'
+          description: 'CPU utilization in percent.'
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
           triggers:
             - uuid: 23edcaf5a4254771994e202174745043
-              expression: 'min(/BSKP - Hardware - Monitor Windows LHM/system.cpu.util,5m)>=90'
-              name: '{HOST.NAME}: High CPU usage (≥90%)'
+              expression: 'min(/BSKP - Hardware - Monitor Windows LHM/system.cpu.util,5m)>={$CPU.UTIL.MAX}'
+              name: '{HOST.NAME}: High CPU usage (>={$CPU.UTIL.MAX}%)'
               opdata: '{ITEM.LASTVALUE1}%'
               priority: WARNING
               description: |
@@ -470,7 +573,10 @@ zabbix_export:
                 Check Task Manager or Resource Monitor to identify processes with high CPU usage.
                 If the issue persists, consider optimizing applications or increasing CPU resources (vCPUs or cores).
               tags:
-                - tag: CPU
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
         - uuid: 63cee1d309a74dbeb1effa85428e1383
           name: 'System name'
           key: system.hostname
@@ -478,7 +584,8 @@ zabbix_export:
           value_type: CHAR
           description: 'The host name of the system.'
           tags:
-            - tag: System
+            - tag: component
+              value: system
           triggers:
             - uuid: d001a1f66f8d4adcb756fd6485dcfc04
               expression: 'change(/BSKP - Hardware - Monitor Windows LHM/system.hostname) and length(last(/BSKP - Hardware - Monitor Windows LHM/system.hostname))>0'
@@ -499,7 +606,10 @@ zabbix_export:
                 Verify if the hostname change was intentional.
                 Ensure that the Zabbix configuration matches the correct host name and update templates or inventory if necessary.
               tags:
-                - tag: System
+                - tag: component
+                  value: system
+                - tag: scope
+                  value: notice
         - uuid: fbcd232482e74589867a884fcac274a1
           name: 'Operating system'
           key: system.sw.os
@@ -511,7 +621,10 @@ zabbix_export:
               parameters:
                 - 1d
           tags:
-            - tag: Windows
+            - tag: component
+              value: os
+            - tag: os
+              value: windows
           triggers:
             - uuid: fb96b9dcae4b4d5eb88606957b31543e
               expression: 'change(/BSKP - Hardware - Monitor Windows LHM/system.sw.os) and length(last(/BSKP - Hardware - Monitor Windows LHM/system.sw.os))>0'
@@ -520,15 +633,19 @@ zabbix_export:
               description: 'The description of the operating system has changed. Possible reasons are that the system has been updated or replaced. Acknowledge to close the problem manually.'
               manual_close: 'YES'
               tags:
-                - tag: Windows
+                - tag: component
+                  value: os
+                - tag: scope
+                  value: notice
         - uuid: 51cb93407b1b4cbf86793dcb4fabf2ef
-          name: Uptime
+          name: 'System uptime'
           key: system.uptime
           delay: 30s
           units: uptime
           description: 'The system uptime expressed in the following format: "N days, hh:mm:ss".'
           tags:
-            - tag: System
+            - tag: component
+              value: system
           triggers:
             - uuid: 84641614f39045408d25f1fc45bb0d6f
               expression: 'last(/BSKP - Hardware - Monitor Windows LHM/system.uptime)<5m'
@@ -549,39 +666,48 @@ zabbix_export:
                 Verify if the reboot was planned.
                 Check Windows Event Viewer for shutdown and startup events to confirm the cause of the restart.
               tags:
-                - tag: System
+                - tag: component
+                  value: system
+                - tag: scope
+                  value: notice
         - uuid: e29949910b3f4693a8fd257d2a5b4719
           name: 'Get filesystems'
           key: vfs.fs.get
           value_type: TEXT
           description: 'The `vfs.fs.get` key acquires raw information set about the filesystems. Later to be extracted by preprocessing in dependent items.'
           tags:
-            - tag: 'File System'
+            - tag: component
+              value: filesystem
         - uuid: 9217ca73163f4d17969a3b2beda38dc0
-          name: 'RAM total'
+          name: 'Total memory'
           key: 'vm.memory.size[total]'
           units: B
+          description: 'Total physical memory.'
           tags:
-            - tag: RAM
+            - tag: component
+              value: memory
         - uuid: 5707380485ca4533b4e5b115fe155a12
-          name: 'RAM used'
+          name: 'Used memory'
           key: 'vm.memory.size[used]'
           units: B
-          description: 'Used memory in bytes.'
+          description: 'Used physical memory.'
           tags:
-            - tag: RAM
+            - tag: component
+              value: memory
         - uuid: 9753cbe22e734345a470b174140e9f8a
-          name: 'RAM utilization'
+          name: 'Memory utilization'
           type: CALCULATED
           key: vm.memory.util
           units: '%'
           params: 'last(//vm.memory.size[used]) / last(//vm.memory.size[total]) * 100'
+          description: 'Memory utilization in percent.'
           tags:
-            - tag: RAM
+            - tag: component
+              value: memory
           triggers:
             - uuid: 40bd80b383dc41deae9000d8af8570bc
-              expression: 'min(/BSKP - Hardware - Monitor Windows LHM/vm.memory.util,5m)>=90'
-              name: '{HOST.NAME}: High RAM usage (≥90%)'
+              expression: 'min(/BSKP - Hardware - Monitor Windows LHM/vm.memory.util,5m)>={$MEM.UTIL.MAX}'
+              name: '{HOST.NAME}: High RAM usage (>={$MEM.UTIL.MAX}%)'
               opdata: '{ITEM.LASTVALUE1}%'
               priority: HIGH
               description: |
@@ -599,19 +725,27 @@ zabbix_export:
                 Consider restarting non-critical applications, optimizing workloads, or adding additional RAM if the condition persists.
               manual_close: 'YES'
               tags:
-                - tag: RAM
+                - tag: component
+                  value: memory
+                - tag: scope
+                  value: capacity
         - uuid: 556b46f4efee4c1f9e68aba008906f2c
-          name: 'Number of cores'
+          name: 'CPU cores'
           key: 'wmi.get[root/cimv2,"Select NumberOfLogicalProcessors from Win32_ComputerSystem"]'
+          description: 'Number of logical CPU cores.'
           tags:
-            - tag: CPU
+            - tag: component
+              value: cpu
         - uuid: 9451483ef149444ab0ed9e812a429128
           name: 'Zabbix agent availability'
           type: INTERNAL
           key: 'zabbix[host,agent,available]'
           description: 'Used for monitoring the availability status of the agent.'
           tags:
-            - tag: Zabbix
+            - tag: component
+              value: zabbix
+            - tag: service
+              value: agent
           triggers:
             - uuid: c1917bb379a040058e8cb64f50337ea0
               expression: 'max(/BSKP - Hardware - Monitor Windows LHM/zabbix[host,agent,available],{$AGENT.TIMEOUT})=0'
@@ -621,7 +755,10 @@ zabbix_export:
               description: 'This trigger indicates that the Zabbix agent (active mode) has stopped responding to the Zabbix server or proxy.'
               manual_close: 'YES'
               tags:
-                - tag: Zabbix
+                - tag: component
+                  value: zabbix
+                - tag: scope
+                  value: availability
       discovery_rules:
         - uuid: f476d28a8396462eaf9f0ac343a9c277
           name: 'Filesystem discovery'
@@ -633,23 +770,25 @@ zabbix_export:
               key: 'vfs.fs.size[{#FSNAME},free]'
               units: B
               tags:
-                - tag: 'File System'
+                - tag: component
+                  value: filesystem
             - uuid: f3f369af033e419cb8a8c624e4962240
               name: 'Disk {#FSNAME} - Used %'
               key: 'vfs.fs.size[{#FSNAME},pused]'
               units: '%'
               tags:
-                - tag: 'File System'
+                - tag: component
+                  value: filesystem
               trigger_prototypes:
                 - uuid: f9270307a806493f8d89266ae2714408
-                  expression: 'last(/BSKP - Hardware - Monitor Windows LHM/vfs.fs.size[{#FSNAME},pused])>=80'
-                  name: '{HOST.NAME}: {#FSLABEL}({#FSNAME}): Space is critically low'
+                  expression: 'last(/BSKP - Hardware - Monitor Windows LHM/vfs.fs.size[{#FSNAME},pused])>={$FS.PUSED.WARN}'
+                  name: '{HOST.NAME}: {#FSLABEL}({#FSNAME}): Space usage > {$FS.PUSED.WARN}%'
                   opdata: '{{ITEM.LASTVALUE1}.fmtnum(1)}%'
                   priority: AVERAGE
                   description: |
                     The filesystem has reached a critical low space condition.
                     
-                    Available free space is below the defined threshold (10%).
+                    Available free space is below the defined threshold.
                     
                     Possible causes:
                     - Log files or temporary files filling up the disk
@@ -661,16 +800,19 @@ zabbix_export:
                     Clean up unnecessary data or extend the disk capacity if required.
                   manual_close: 'YES'
                   tags:
-                    - tag: 'File System'
+                    - tag: component
+                      value: filesystem
+                    - tag: scope
+                      value: capacity
                 - uuid: 181d46d8fe24431489dbdf3bc023f9dc
-                  expression: 'last(/BSKP - Hardware - Monitor Windows LHM/vfs.fs.size[{#FSNAME},pused])>=90'
-                  name: '{HOST.NAME}: {#FSLABEL}({#FSNAME}): Space is critically low'
+                  expression: 'last(/BSKP - Hardware - Monitor Windows LHM/vfs.fs.size[{#FSNAME},pused])>={$FS.PUSED.CRIT}'
+                  name: '{HOST.NAME}: {#FSLABEL}({#FSNAME}): Space usage > {$FS.PUSED.CRIT}%'
                   opdata: '{{ITEM.LASTVALUE1}.fmtnum(1)}%'
                   priority: HIGH
                   description: |
                     The filesystem has reached a critical low space condition.
                     
-                    Available free space is below the defined threshold (10%).
+                    Available free space is below the defined threshold.
                     
                     Possible causes:
                     - Log files or temporary files filling up the disk
@@ -682,20 +824,58 @@ zabbix_export:
                     Clean up unnecessary data or extend the disk capacity if required.
                   manual_close: 'YES'
                   tags:
-                    - tag: 'File System'
+                    - tag: component
+                      value: filesystem
+                    - tag: scope
+                      value: capacity
             - uuid: ea7667a20b754a8d9af5f36efa16de96
               name: 'Disk {#FSNAME} - Total size'
               key: 'vfs.fs.size[{#FSNAME},total]'
               units: B
               tags:
-                - tag: 'File System'
+                - tag: component
+                  value: filesystem
             - uuid: ebd792dd3d05489e91723223e774f7ad
               name: 'Disk {#FSNAME} - Used space'
               key: 'vfs.fs.size[{#FSNAME},used]'
               units: B
               tags:
-                - tag: 'File System'
+                - tag: component
+                  value: filesystem
       macros:
+        - macro: '{$CPU.INTERRUPT.CRIT.MAX}'
+          value: '20'
+          description: 'Maximum CPU interrupt time percentage before triggering an alert.'
+        - macro: '{$CPU.PRIV.CRIT.MAX}'
+          value: '30'
+          description: 'Maximum CPU privileged time percentage before triggering an alert.'
+        - macro: '{$CPU.QUEUE.CRIT.MAX}'
+          value: '2'
+          description: 'Maximum allowed processor queue length above the core-based baseline.'
+        - macro: '{$CPU.UTIL.MAX}'
+          value: '90'
+          description: 'Maximum sustained CPU utilization percentage before triggering an alert.'
+        - macro: '{$FS.PUSED.CRIT}'
+          value: '90'
+          description: 'Filesystem usage percentage that triggers a critical alert.'
+        - macro: '{$FS.PUSED.WARN}'
+          value: '80'
+          description: 'Filesystem usage percentage that triggers a warning alert.'
+        - macro: '{$MEM.UTIL.MAX}'
+          value: '90'
+          description: 'Maximum sustained memory utilization percentage before triggering an alert.'
+        - macro: '{$NET.GW.LAT.MAX}'
+          value: '0.05'
+          description: 'Maximum allowed gateway latency in seconds.'
+        - macro: '{$NET.GW.LOSS.MAX}'
+          value: '20'
+          description: 'Maximum allowed gateway packet loss percentage.'
+        - macro: '{$NET.PING.LAT.MAX}'
+          value: '0.2'
+          description: 'Maximum allowed external ping latency in seconds.'
+        - macro: '{$NET.PING.TARGET}'
+          value: 8.8.8.8
+          description: 'External ping target used to measure latency.'
         - macro: '{$AGENT.TIMEOUT}'
           description: 'Timeout after which the agent is considered unavailable. Only works for agents accessible via the Zabbix server/proxy (passive mode).'
         - macro: '{$GW_IP}'
@@ -724,4 +904,7 @@ zabbix_export:
         Check CPU utilization, active processes, and interrupt time.
         If the issue is persistent, consider optimizing workloads or adding CPU resources (vCPUs or cores).
       tags:
-        - tag: CPU
+        - tag: component
+          value: cpu
+        - tag: scope
+          value: performance
