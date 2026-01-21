@@ -25,27 +25,20 @@ zabbix_export:
         version: 2.0-1
       groups:
         - name: 'Templates/Operating systems'
-      tags:
-        - tag: vendor
-          value: bskp
-        - tag: os
-          value: linux
-        - tag: service
-          value: agent
-        - tag: category
-          value: hardware
       items:
         - uuid: df561a0cece94760a78704edf7da7326
-          name: 'Host name of Zabbix agent running'
+          name: 'Zabbix agent hostname'
           key: agent.hostname
           delay: 1h
           value_type: CHAR
+          description: 'The host name of the Zabbix agent running on the host.'
           preprocessing:
             - type: DISCARD_UNCHANGED_HEARTBEAT
               parameters:
                 - 1d
           tags:
-            - tag: system
+            - tag: component
+              value: system
         - uuid: f94f9f4699e94c369e6c98b2a2f485ce
           name: 'Zabbix agent ping'
           key: agent.ping
@@ -54,7 +47,9 @@ zabbix_export:
             name: 'Zabbix agent ping status'
           tags:
             - tag: component
-              value: system
+              value: zabbix
+            - tag: service
+              value: agent
         - uuid: 27c42cf180b44632b5d9b8b5788165b3
           name: 'Version of Zabbix agent running'
           key: agent.version
@@ -111,23 +106,30 @@ zabbix_export:
                 - tag: scope
                   value: performance
         - uuid: d3edcc4a18b7438daa33154388205255
-          name: 'Net RX Total'
+          name: 'Network RX total'
           key: 'net.if.in[{$NET.IFACE}]'
           units: B
+          description: 'Total incoming network traffic on the selected interface.'
           tags:
-            - tag: Network
+            - tag: component
+              value: network
         - uuid: 622620bb570c4793815d0ffaa9be5c34
-          name: 'Net TX Total'
+          name: 'Network TX total'
           key: 'net.if.out[{$NET.IFACE}]'
           units: B
+          description: 'Total outgoing network traffic on the selected interface.'
           tags:
-            - tag: Network
+            - tag: component
+              value: network
         - uuid: ab7d0471092544a6a950184d1bac906d
           name: 'Number of processes'
           key: proc.num
+          description: 'Number of processes.'
           tags:
             - tag: component
               value: system
+            - tag: os
+              value: linux
         - uuid: b2637293884d40108f41b11767dd5be0
           name: 'Number of running processes'
           key: 'proc.num[,,run]'
@@ -201,7 +203,7 @@ zabbix_export:
           key: system.cpu.util
           value_type: FLOAT
           units: '%'
-          description: 'CPU utilization expressed in %.'
+          description: 'CPU utilization in percent.'
           preprocessing:
             - type: JAVASCRIPT
               parameters:
@@ -209,7 +211,8 @@ zabbix_export:
           master_item:
             key: 'system.cpu.util[,idle]'
           tags:
-            - tag: cpu
+            - tag: component
+              value: cpu
           triggers:
             - uuid: b4e904559b694df0ad45bcce7930c3a6
               expression: 'min(/BSKP - Hardware - Monitor Linux/system.cpu.util,5m)>{$CPU.UTIL.CRIT}'
@@ -256,9 +259,10 @@ zabbix_export:
           key: 'system.cpu.util[,interrupt]'
           value_type: FLOAT
           units: '%'
-          description: 'Time the CPU has spent servicing hardware interrupts.'
+          description: 'Percentage of time the CPU spends handling hardware interrupts.'
           tags:
-            - tag: cpu
+            - tag: component
+              value: cpu
         - uuid: 5df67d9162cc437585990cc8708be894
           name: 'CPU iowait time'
           key: 'system.cpu.util[,iowait]'
@@ -375,6 +379,7 @@ zabbix_export:
           key: system.sw.os
           delay: 1h
           value_type: CHAR
+          description: 'Operating system description.'
           inventory_link: OS
           preprocessing:
             - type: DISCARD_UNCHANGED_HEARTBEAT
@@ -383,6 +388,8 @@ zabbix_export:
           tags:
             - tag: component
               value: os
+            - tag: os
+              value: linux
           triggers:
             - uuid: b1998f98c06b49dd8d71e1c6df409371
               expression: 'change(/BSKP - Hardware - Monitor Linux/system.sw.os) and length(last(/BSKP - Hardware - Monitor Linux/system.sw.os))>0'
@@ -517,7 +524,8 @@ zabbix_export:
           value_type: TEXT
           description: 'The `vfs.fs.get` key acquires raw information set about the filesystems. Later to be extracted by preprocessing in dependent items.'
           tags:
-            - tag: storage
+            - tag: component
+              value: filesystem
         - uuid: e811e6e2ae84461294e121f12e767b40
           name: 'RAM available'
           key: 'vm.memory.size[available]'
@@ -541,28 +549,32 @@ zabbix_export:
             - tag: component
               value: memory
         - uuid: d5c3541a7c0949ce812df1beb0732941
-          name: 'RAM total'
+          name: 'Total memory'
           key: 'vm.memory.size[total]'
           units: B
-          description: 'Total memory expressed in bytes.'
+          description: 'Total physical memory.'
           tags:
             - tag: component
               value: memory
         - uuid: bfaa1d88aa374c0697ee6f965a254742
-          name: 'RAM used'
+          name: 'Used memory'
           type: DEPENDENT
           key: 'vm.memory.size[used]'
           value_type: FLOAT
           units: B
+          description: 'Used physical memory.'
           master_item:
             key: 'vm.memory.size[available]'
+          tags:
+            - tag: component
+              value: memory
         - uuid: 403cebed115441369e94d35d070ca7b8
-          name: 'RAM utilization'
+          name: 'Memory utilization'
           type: DEPENDENT
           key: vm.memory.utilization
           value_type: FLOAT
           units: '%'
-          description: 'The percentage of used memory is calculated as `100-pavailable`.'
+          description: 'Memory utilization in percent.'
           preprocessing:
             - type: JAVASCRIPT
               parameters:
@@ -596,7 +608,9 @@ zabbix_export:
             name: zabbix.host.available
           tags:
             - tag: component
-              value: system
+              value: zabbix
+            - tag: service
+              value: agent
           triggers:
             - uuid: 93594214371b4dc88b41663cad8537f0
               expression: 'max(/BSKP - Hardware - Monitor Linux/zabbix[host,agent,available],{$AGENT.TIMEOUT})=0'
