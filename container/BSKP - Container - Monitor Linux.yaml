@@ -7,6 +7,10 @@ zabbix_export:
     - uuid: 843dd3ae8b2048ce98d8b79588397aa2
       template: 'BSKP - Container - Monitor Linux'
       name: 'BSKP - Container - Monitor Linux'
+      description: |
+        Monitoramento basico de containers Linux via itens TRAP.
+        Envie as metricas para as chaves listadas usando Zabbix sender
+        ou outra integracao de coleta.
       vendor:
         name: bskp
         version: '1.0'
@@ -18,12 +22,19 @@ zabbix_export:
           type: TRAP
           key: container.cpu.util
           units: '%'
+          description: 'Percentual de utilizacao de CPU do container.'
+          tags:
+            - tag: component
+              value: cpu
           triggers:
             - uuid: 8a64a3b234a44ebe98041352089b8b43
               expression: 'avg(/BSKP - Container - Monitor Linux/container.cpu.util,{$CPU.UTIL.TIME})>{$CPU.UTIL.MAX}'
               name: 'High CPU usage on {HOST.NAME}'
               priority: AVERAGE
               manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: performance
             - uuid: 61bf5f97969e47679810c9d887b2ebc8
               expression: 'nodata(/BSKP - Container - Monitor Linux/container.cpu.util,{$NO.DATA.TIME})=1'
               name: 'No data received from {HOST.NAME}'
@@ -40,7 +51,10 @@ zabbix_export:
           key: container.disk.read.bytes
           value_type: FLOAT
           units: B
-          description: 'Quantidade total de dados gravados pelo container no disco desde que ele foi iniciado.'
+          description: 'Quantidade total de dados lidos pelo container no disco desde que ele foi iniciado.'
+          tags:
+            - tag: component
+              value: storage
         - uuid: 28282ec5b74d49eb9e61c01b5a450036
           name: 'Disk: Written bytes (total)'
           type: TRAP
@@ -48,12 +62,19 @@ zabbix_export:
           value_type: FLOAT
           units: B
           description: 'Quantidade total de dados gravados pelo container no disco desde que ele foi iniciado.'
+          tags:
+            - tag: component
+              value: storage
         - uuid: ef00d5cc9bc74575a926f0ff116123d5
           name: 'Memory: Used'
           type: TRAP
           key: container.memory.util
           value_type: FLOAT
           units: B
+          description: 'Quantidade de memoria usada pelo container.'
+          tags:
+            - tag: component
+              value: memory
         - uuid: b88b99a2dd534e1b831d201e67235fd6
           name: 'Network: RX bytes (total)'
           type: TRAP
@@ -61,6 +82,9 @@ zabbix_export:
           value_type: FLOAT
           units: B
           description: 'Total de dados recebidos pelo container desde que ele foi iniciado.'
+          tags:
+            - tag: component
+              value: network
         - uuid: ace069baf9c0407884eccbdd2e7d2b35
           name: 'Network: TX bytes (total)'
           type: TRAP
@@ -68,16 +92,26 @@ zabbix_export:
           value_type: FLOAT
           units: B
           description: 'Total de dados enviados pela interface de rede do container desde o início da execução.'
+          tags:
+            - tag: component
+              value: network
         - uuid: 2b66f3899aae4b9c9b105adf7872fbe9
           name: 'Processes: Count'
           type: TRAP
           key: container.pids
+          description: 'Quantidade de processos em execucao no container.'
+          tags:
+            - tag: component
+              value: system
           triggers:
             - uuid: c0a5c9814ded43638e98bd44ad0d25d8
               expression: 'last(/BSKP - Container - Monitor Linux/container.pids)<{$PROC.MIN}'
               name: '{HOST.NAME} has no running processes'
               priority: HIGH
               manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: availability
       tags:
         - tag: device
           value: container
@@ -106,3 +140,8 @@ zabbix_export:
       name: 'No network traffic on {HOST.NAME}'
       priority: WARNING
       manual_close: 'YES'
+      tags:
+        - tag: scope
+          value: availability
+        - tag: service
+          value: container
