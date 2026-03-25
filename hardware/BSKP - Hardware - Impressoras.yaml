@@ -5,8 +5,8 @@ zabbix_export:
       name: 'Blackskulp Templates'
   templates:
     - uuid: 4ceb0619d76547479d04610a13d201ae
-      template: 'BSKP - Impressoras'
-      name: 'BSKP - Impressoras'
+      template: 'BSKP - Hardware - Impressoras'
+      name: 'BSKP - Hardware - Impressoras'
       description: |
         Template de impressoras via TRAP.
         Parte do projeto BSKP - Zabbix Templates.
@@ -35,6 +35,9 @@ zabbix_export:
           type: TRAP
           key: prt_name
           value_type: TEXT
+      tags:
+        - tag: device
+          value: printer
   graphs:
     - uuid: 05ecf523f33b4a179a2addc1f4cdcbdf
       name: Impressões
@@ -42,5 +45,5 @@ zabbix_export:
         - color: 199C0D
           calc_fnc: ALL
           item:
-            host: 'BSKP - Impressoras'
+            host: 'BSKP - Hardware - Impressoras'
             key: prt_counter
