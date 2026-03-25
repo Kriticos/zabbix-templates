@@ -1,0 +1,364 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 550e8400e29b41d4a716446655440000
+      name: 'Blackskulp Templates'
+  templates:
+    - uuid: f45951e9385e42b0b2bce791a35db27a
+      template: 'BSKP - Hardware - NVMe Windows'
+      name: 'BSKP - Hardware - NVMe Windows'
+      description: |
+        Dependencia
+        
+        smarttools - link https://www.smartmontools.org/wiki/Download
+      vendor:
+        name: bskp
+        version: '1.0'
+      groups:
+        - name: 'Blackskulp Templates'
+      items:
+        - uuid: 9bd75cd689c04d4eaf70402a31a9c3c9
+          name: 'NVMe: Available Spare'
+          key: nvme.available_spare
+          delay: 1h
+          history: 365d
+          trends: '0'
+          units: '%'
+          description: 'Percentual de capacidade reserva ainda disponível no NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+          triggers:
+            - uuid: 25695a432aca4d7f95a1e6cd70c557ca
+              expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.available_spare)<10'
+              name: 'NVMe: Available spare is low (< 10%)'
+              priority: WARNING
+              description: 'Available spare is below 10%. Consider planning drive replacement.'
+              tags:
+                - tag: class
+                  value: availability
+                - tag: class
+                  value: warning
+                - tag: component
+                  value: storage
+        - uuid: e33e12ea33424dedbf32bcfe3f2fd3b6
+          name: 'NVMe: Available Spare Threshold'
+          key: nvme.available_spare_threshold
+          delay: 12h
+          history: 365d
+          trends: '0'
+          units: '%'
+          description: 'Limite mínimo de spare definido pelo dispositivo NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+        - uuid: 8e3eea21d9714f33a3f8e79419acd882
+          name: 'NVMe: Controller Busy Time'
+          key: nvme.controller_busy_time
+          delay: 1h
+          history: 365d
+          trends: '0'
+          units: '!min'
+          description: 'Tempo total em minutos em que o controlador NVMe permaneceu ocupado.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+        - uuid: eb95910ed80845e78aa136b0a0893bdc
+          name: 'NVMe: Critical Temperature Time'
+          key: nvme.critical_temp_time
+          delay: 1h
+          history: 365d
+          trends: '0'
+          units: '!min'
+          description: 'Tempo acumulado em minutos em temperatura crítica.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+        - uuid: 948d979cf7f34313bc1f7bd66fea8240
+          name: 'NVMe: Critical Warning'
+          key: nvme.critical_warning
+          delay: 1h
+          history: 90d
+          value_type: CHAR
+          description: 'Valor hexadecimal do campo Critical Warning do NVMe. Exemplo: 0x00.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+          triggers:
+            - uuid: 25546b2bee7147fea2855e687b42d28b
+              expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.critical_warning)<>"0x00"'
+              name: 'NVMe: Critical warning flag is set'
+              priority: HIGH
+              description: 'NVMe Critical Warning field is not 0x00, indicating one or more critical conditions (e.g., temperature, reliability, media errors, or read-only mode).'
+              dependencies:
+                - name: 'NVMe: SMART overall health is FAILED'
+                  expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.health)="FAILED"'
+              tags:
+                - tag: class
+                  value: fault
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+        - uuid: 6758535596194a0d9948116214cc9627
+          name: 'NVMe: Data Units Read'
+          key: nvme.data_units_read
+          delay: 1h
+          history: 365d
+          trends: '0'
+          description: 'Contador bruto de data units lidas reportado pelo NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+        - uuid: 0286ce5efa95423583dd00c3ce4a61a7
+          name: 'NVMe: Data Units Written'
+          key: nvme.data_units_written
+          delay: 1h
+          description: 'Contador bruto de data units escritas reportado pelo NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+        - uuid: 484f812b90d1463ea3cadf49eea56f48
+          name: 'NVMe: Error Information Log Entries'
+          key: nvme.error_log_entries
+          delay: 1h
+          history: 365d
+          trends: '0'
+          description: 'Total de entradas registradas no log de erros do NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+          triggers:
+            - uuid: aa555461aac14cfaac947c11d85989a8
+              expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.error_log_entries)>0'
+              name: 'NVMe: Error log entries increased in last 24h'
+              priority: WARNING
+              description: 'NVMe error log entries increased within the last 24 hours. Review SMART details and system logs for storage errors.'
+              tags:
+                - tag: class
+                  value: degradation
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+        - uuid: 657d12e3d29146df86054a6798c304dc
+          name: 'NVMe: Health Status'
+          key: nvme.health
+          delay: 1h
+          history: 90d
+          value_type: CHAR
+          description: 'Status geral de saúde SMART do NVMe. Retorno esperado: PASSED ou FAILED.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+          triggers:
+            - uuid: a36b135e70b64e1a87802e5127f403de
+              expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.health)="FAILED"'
+              name: 'NVMe: SMART overall health is FAILED'
+              priority: HIGH
+              description: 'The NVMe device reports SMART overall health status as FAILED. Immediate investigation and backup are recommended.'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+        - uuid: ba8005a9beb8409db0bd8171786e53c9
+          name: 'NVMe: Media and Data Integrity Errors'
+          key: nvme.media_errors
+          delay: 1h
+          history: 365d
+          trends: '0'
+          description: 'Total de erros de mídia e integridade de dados do NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+          triggers:
+            - uuid: a588f2f94a5a40f091e105ffb923980d
+              expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.media_errors)>0'
+              name: 'NVMe: Media/Data integrity errors detected'
+              priority: HIGH
+              description: 'The NVMe reports media and data integrity errors. Data corruption risk is elevated; check logs and consider replacing the drive.'
+              tags:
+                - tag: class
+                  value: fault
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+        - uuid: 75f4b84a9772481cb271e82a4bed7403
+          name: 'NVMe: Percentage Used'
+          key: nvme.percentage_used
+          delay: 1h
+          units: '%'
+          description: 'Percentual de vida útil já consumida do NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+          triggers:
+            - uuid: 767db276a3f24d72a48c7dc0ec8e59f6
+              expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.percentage_used)>=95'
+              name: 'NVMe: Percentage used is critical (>= 95%)'
+              priority: HIGH
+              description: 'NVMe endurance consumption is critical (percentage used >= 95%). Replace the drive as soon as possible to reduce risk of failure.'
+              dependencies:
+                - name: 'NVMe: Percentage used is high (>= 80%)'
+                  expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.percentage_used)>=80'
+                  recovery_expression: 'max(/BSKP - Hardware - NVMe Windows/nvme.percentage_used,5m)<78'
+              tags:
+                - tag: class
+                  value: capacity
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+            - uuid: bd0f72e309a646c4b80135c416fd44e0
+              expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.percentage_used)>=80'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'max(/BSKP - Hardware - NVMe Windows/nvme.percentage_used,5m)<78'
+              name: 'NVMe: Percentage used is high (>= 80%)'
+              priority: WARNING
+              description: 'NVMe endurance consumption is high (percentage used >= 80%). Plan replacement according to write workload and vendor guidelines.'
+              tags:
+                - tag: class
+                  value: capacity
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+        - uuid: 42537cc7f982493ca631f927d0be99ee
+          name: 'NVMe: Power Cycles'
+          key: nvme.power_cycles
+          delay: 1h
+          trends: '0'
+          description: 'Número de ciclos de ligamento/desligamento do NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+        - uuid: 933d954a1ba445528fb07248f4c30a3a
+          name: 'NVMe: Power On Hours'
+          key: nvme.power_on_hours
+          delay: 1h
+          trends: '0'
+          units: '!h'
+          description: 'Total de horas em que o NVMe permaneceu ligado.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+        - uuid: 84e79ebc00eb4b7696ae4d92527e69bc
+          name: 'NVMe: Temperature'
+          key: nvme.temperature
+          units: °C
+          description: 'Temperatura do NVMe Force MP600. Limite de aviso: 90°C, Limite crítico: 95°C'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: 4e029602697647fe9e0c1ad133d1cec1
+              expression: 'min(/BSKP - Hardware - NVMe Windows/nvme.temperature,5m)>=80'
+              name: 'NVMe: Temperature is critical (>= 80°C)'
+              priority: HIGH
+              description: 'NVMe temperature is above the critical threshold (>= 80°C). Immediate action required to prevent damage or throttling.'
+              dependencies:
+                - name: 'NVMe: Temperature is high (>= 70°C)'
+                  expression: 'min(/BSKP - Hardware - NVMe Windows/nvme.temperature,5m)>=70'
+                  recovery_expression: 'min(/BSKP - Hardware - NVMe Windows/nvme.temperature,5m)<68'
+              tags:
+                - tag: class
+                  value: thermal
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+            - uuid: 9d5a323410604454bd4b2764d28aa953
+              expression: 'min(/BSKP - Hardware - NVMe Windows/nvme.temperature,5m)>=70'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'min(/BSKP - Hardware - NVMe Windows/nvme.temperature,5m)<68'
+              name: 'NVMe: Temperature is high (>= 70°C)'
+              priority: AVERAGE
+              description: 'NVMe temperature is above the warning threshold (>= 70°C). Check airflow, heatsink, and workload.'
+              tags:
+                - tag: clsss
+                  value: thermal
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+        - uuid: f4ebcf1a4afc43a39f641c5df698047a
+          name: 'NVMe: Unsafe Shutdowns'
+          key: nvme.unsafe_shutdowns
+          delay: 1h
+          history: 365d
+          trends: '0'
+          description: 'Quantidade de desligamentos inseguros registrados pelo NVMe.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+          triggers:
+            - uuid: 3e87760274814827b02814cae885dac2
+              expression: 'change(/BSKP - Hardware - NVMe Windows/nvme.unsafe_shutdowns)>0'
+              name: 'NVMe: Unsafe shutdowns increased in last 24h'
+              priority: WARNING
+              description: 'Unsafe shutdown counter increased in the last 24 hours. Check power stability, OS shutdown events, and UPS operation.'
+              tags:
+                - tag: class
+                  value: environment
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: health
+        - uuid: b77b199cb19949fd9afa23ce8111a7d3
+          name: 'NVMe: Warning Temperature Time'
+          key: nvme.warning_temp_time
+          delay: 1h
+          history: 365d
+          trends: '0'
+          units: '!min'
+          description: 'Tempo acumulado em minutos em temperatura de warning.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: health
+  triggers:
+    - uuid: 398296ecf64440a4a8611214ee7da66e
+      expression: 'last(/BSKP - Hardware - NVMe Windows/nvme.available_spare)<last(/BSKP - Hardware - NVMe Windows/nvme.available_spare_threshold)'
+      name: 'NVMe: Available spare is below device threshold'
+      priority: HIGH
+      description: 'Available spare capacity is below the device-defined threshold. The drive may be close to failure.'
+      tags:
+        - tag: class
+          value: fault
+        - tag: component
+          value: storage
+        - tag: scope
+          value: health

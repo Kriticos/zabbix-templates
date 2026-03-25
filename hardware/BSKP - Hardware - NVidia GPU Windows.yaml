@@ -1,0 +1,393 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 550e8400e29b41d4a716446655440000
+      name: 'Blackskulp Templates'
+  templates:
+    - uuid: b9eeb2f30baa47319d2433ea1a70d7be
+      template: 'BSKP - Hardware - NVidia GPU Windows'
+      name: 'BSKP - Hardware - NVidia GPU Windows'
+      description: |
+        Template for monitoring NVIDIA GPUs on Windows hosts using Zabbix Agent 2 and NVIDIA SMI.
+        
+        This template collects identification, performance, memory, clock, power, cooling, PCIe, operational state, and ECC metrics from NVIDIA GPUs installed on Windows systems.
+        
+        Requirements:
+        
+        - At least one NVIDIA GPU installed on the monitored host
+        - NVIDIA drivers installed and working properly
+        - `nvidia-smi` available on the monitored host
+        - Zabbix Agent 2 installed and running on the monitored host
+        - Required UserParameters configured in the `zabbix_agent2.conf` file
+        
+        The following UserParameters must be added to the Zabbix agent configuration (zabbix_agent2.conf) before linking this template to a host:
+        
+        ### ===== IDENTIFICATION =====
+        
+        UserParameter=gpu.name[*],nvidia-smi --id=$1 --query-gpu=name --format=csv,noheader
+        UserParameter=gpu.uuid[*],nvidia-smi --id=$1 --query-gpu=uuid --format=csv,noheader
+        UserParameter=gpu.driver.version[*],nvidia-smi --id=$1 --query-gpu=driver_version --format=csv,noheader
+        UserParameter=gpu.vbios.version[*],nvidia-smi --id=$1 --query-gpu=vbios_version --format=csv,noheader
+        
+        ### ===== PERFORMANCE =====
+        
+        UserParameter=gpu.utilization[*],nvidia-smi --id=$1 --query-gpu=utilization.gpu --format=csv,noheader,nounits
+        UserParameter=gpu.memory.utilization[*],nvidia-smi --id=$1 --query-gpu=utilization.memory --format=csv,noheader,nounits
+        UserParameter=gpu.temperature[*],nvidia-smi --id=$1 --query-gpu=temperature.gpu --format=csv,noheader,nounits
+        
+        ### ===== MEMORY =====
+        
+        UserParameter=gpu.memory.total[*],nvidia-smi --id=$1 --query-gpu=memory.total --format=csv,noheader,nounits
+        UserParameter=gpu.memory.used[*],nvidia-smi --id=$1 --query-gpu=memory.used --format=csv,noheader,nounits
+        UserParameter=gpu.memory.free[*],nvidia-smi --id=$1 --query-gpu=memory.free --format=csv,noheader,nounits
+        
+        ### ===== CLOCKS =====
+        
+        UserParameter=gpu.clock.graphics[*],nvidia-smi --id=$1 --query-gpu=clocks.gr --format=csv,noheader,nounits
+        UserParameter=gpu.clock.memory[*],nvidia-smi --id=$1 --query-gpu=clocks.mem --format=csv,noheader,nounits
+        
+        ### ===== POWER =====
+        
+        UserParameter=gpu.power.draw[*],nvidia-smi --id=$1 --query-gpu=power.draw --format=csv,noheader,nounits
+        UserParameter=gpu.power.limit[*],nvidia-smi --id=$1 --query-gpu=power.limit --format=csv,noheader,nounits
+        
+        ### ===== COOLING =====
+        
+        UserParameter=gpu.fan.speed[*],nvidia-smi --id=$1 --query-gpu=fan.speed --format=csv,noheader,nounits
+        
+        ### ===== PCIE =====
+        
+        UserParameter=gpu.pcie.link.current[*],nvidia-smi --id=$1 --query-gpu=pcie.link.gen.current --format=csv,noheader,nounits
+        UserParameter=gpu.pcie.link.max[*],nvidia-smi --id=$1 --query-gpu=pcie.link.gen.max --format=csv,noheader,nounits
+        
+        ### ===== STATE =====
+        
+        UserParameter=gpu.performance.state[*],nvidia-smi --id=$1 --query-gpu=pstate --format=csv,noheader
+        UserParameter=gpu.compute.mode[*],nvidia-smi --id=$1 --query-gpu=compute_mode --format=csv,noheader
+        
+        ### ===== ECC (if supported) =====
+        
+        UserParameter=gpu.ecc.mode[*],nvidia-smi --id=$1 --query-gpu=ecc.mode.current --format=csv,noheader
+        UserParameter=gpu.ecc.errors.corrected[*],nvidia-smi --id=$1 --query-gpu=ecc.errors.corrected.aggregate.total --format=csv,noheader,nounits
+        UserParameter=gpu.ecc.errors.uncorrected[*],nvidia-smi --id=$1 --query-gpu=ecc.errors.uncorrected.aggregate.total --format=csv,noheader,nounits
+        
+        After adding these UserParameters, restart the Zabbix Agent 2 service on the monitored host.
+        
+        This template depends on external GPU queries executed through `nvidia-smi` via Zabbix UserParameters. If a metric is not supported by the installed GPU model or driver version, the corresponding item may return unsupported.
+      vendor:
+        name: bskp
+        version: '1.0'
+      groups:
+        - name: 'Blackskulp Templates'
+      items:
+        - uuid: f390380ca06d406daae4443d7c28c9c9
+          name: 'GPU Core Clock'
+          key: gpu.clock.core
+          delay: 30s
+          trends: '0'
+          units: MHz
+          description: 'Frequência atual do núcleo da GPU. Varia conforme carga e temperatura'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: performance
+        - uuid: d934b9138be64a198a59307cf7180a6c
+          name: 'GPU Memory Clock'
+          key: gpu.clock.mem
+          delay: 30s
+          trends: '0'
+          units: MHz
+          description: 'Frequência atual da memória da GPU. Varia conforme carga'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: performance
+        - uuid: 8fdf6fa99d65413aad8033c71eeee0d4
+          name: 'GPU Compute Mode'
+          key: gpu.compute_mode
+          delay: 1h
+          value_type: CHAR
+          description: 'Modo de computação da GPU (Default, Exclusive, Prohibited, etc)'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: state
+        - uuid: 241de23c557e4d74b1f1fcb7caff9df2
+          name: 'GPU Driver Version'
+          key: gpu.driver
+          delay: 1h
+          value_type: CHAR
+          description: 'Versão do driver NVIDIA instalado'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: identification
+        - uuid: c9856b56ccd24d8297bfe8da6e49ad5f
+          name: 'GPU ECC Corrected Errors'
+          key: gpu.ecc.corrected
+          delay: 1h
+          trends: '0'
+          status: DISABLED
+          description: 'Total de erros ECC corrigidos automaticamente. Valores altos indicam problemas de memória'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: ecc
+        - uuid: 42d30b22458c4e329f956a3c1a9b8960
+          name: 'GPU ECC Mode'
+          key: gpu.ecc.mode
+          delay: 1h
+          value_type: CHAR
+          status: DISABLED
+          description: 'Modo ECC (Error Correcting Code) da GPU. Suportado apenas em GPUs profissionais'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: ecc
+        - uuid: b277fca0014f4c46bab0d0e1c45741bf
+          name: 'GPU ECC Uncorrected Errors'
+          key: gpu.ecc.uncorrected
+          delay: 1h
+          trends: '0'
+          status: DISABLED
+          description: 'Total de erros ECC não corrigidos. Valores maiores que 0 indicam falha crítica de memória'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: ecc
+        - uuid: 66b08a5db9a5439182f5ef68004243b3
+          name: 'GPU Fan Speed'
+          key: gpu.fan
+          delay: 30s
+          value_type: FLOAT
+          units: '%'
+          description: 'Velocidade do ventilador da GPU em percentual. Valores altos indicam temperatura elevada'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: cooler
+        - uuid: bd04e5d6597f4e039d1e8dae1aa48381
+          name: 'GPU Memory Free'
+          key: gpu.mem.free
+          delay: 30s
+          value_type: FLOAT
+          trends: '0'
+          units: B
+          description: 'Memória livre disponível na GPU em bytes'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: memory
+        - uuid: f160d0e5e34546e1b7eb455dc3bcb732
+          name: 'GPU Memory Total'
+          key: gpu.mem.total
+          delay: 1h
+          units: B
+          description: 'Memória total disponível na GPU em bytes'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: memory
+        - uuid: 5a421f1f5eb34f03ad0eca52a6f767ce
+          name: 'GPU Memory Used'
+          key: gpu.mem.used
+          delay: 30s
+          trends: '0'
+          units: B
+          description: 'Memória utilizada na GPU em bytes. Útil para detectar vazamentos de memória'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: memory
+        - uuid: 923e9e3d2a91415188d08e958546783a
+          name: 'GPU Memory Utilization'
+          key: gpu.mem.util
+          delay: 30s
+          value_type: FLOAT
+          trends: '0'
+          units: '%'
+          description: 'Percentual de utilização da memória da GPU. Valores altos indicam falta de memória disponível'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: performance
+        - uuid: dfeae7058b7b48329363df61d47f2c4d
+          name: 'GPU Name'
+          key: gpu.name
+          delay: 1h
+          value_type: CHAR
+          description: 'Nome da placa de vídeo NVIDIA (ex: GeForce RTX 4070)'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: identification
+        - uuid: e28fda1cf69044f08d1ddee734475c9c
+          name: 'GPU PCIe Current Gen'
+          key: gpu.pcie.current
+          delay: 1h
+          description: 'Geração PCIe atual em uso (3.0, 4.0, 5.0, etc)'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: pcie
+        - uuid: 57d87265f2784b2a9e8e7282aa0a788b
+          name: 'GPU PCIe Max Gen'
+          key: gpu.pcie.max
+          delay: 1h
+          description: 'Geração PCIe máxima suportada pela GPU'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: pcie
+        - uuid: 5f7e126898464f8bbbe66d2bd4aee2d2
+          name: 'GPU Power Draw'
+          key: gpu.power.draw
+          delay: 30s
+          value_type: FLOAT
+          trends: '0'
+          units: W
+          description: 'Consumo de energia atual da GPU em watts. Valores altos indicam carga intensiva'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: power
+        - uuid: e2d42acdf5f64f51879f81b1368d4fe4
+          name: 'GPU Power Limit'
+          key: gpu.power.limit
+          delay: 1h
+          value_type: FLOAT
+          trends: '0'
+          units: W
+          description: 'Limite máximo de potência configurado para a GPU'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: power
+        - uuid: d64158ad182c42c59f4b7c658560276d
+          name: 'GPU Performance State'
+          key: gpu.pstate
+          delay: 30s
+          value_type: CHAR
+          description: 'Estado de performance da GPU (P0=máximo, P12=mínimo). Indica modo de economia de energia'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: state
+        - uuid: 2435bbd9bf6e4eb59d8edd45fbf150dc
+          name: 'GPU Temperature'
+          key: gpu.temp
+          delay: 30s
+          value_type: FLOAT
+          trends: '0'
+          units: °C
+          description: 'Temperatura do núcleo da GPU. Valores acima de 80°C indicam necessidade de melhor resfriamento'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: 81c178ebb36343989dd1078868a99530
+              expression: 'nodata(/BSKP - Hardware - NVidia GPU Windows/gpu.temp,10m)=1'
+              name: 'NVIDIA GPU data unavailable'
+              priority: AVERAGE
+              description: 'No GPU temperature data has been received for 10 minutes. This may indicate an issue with Zabbix Agent 2, UserParameters, nvidia-smi, or the NVIDIA driver.'
+              tags:
+                - tag: component
+                  value: gpu
+                - tag: scope
+                  value: availability
+            - uuid: 55475123e1fc4fc4b79c16a0da131d60
+              expression: 'max(/BSKP - Hardware - NVidia GPU Windows/gpu.temp,5m)>{$GPU.TEMP.WARN} and max(/BSKP - Hardware - NVidia GPU Windows/gpu.temp,5m)<={$GPU.TEMP.CRIT}'
+              name: 'NVIDIA GPU temperature is high'
+              priority: WARNING
+              description: 'GPU temperature is above the warning threshold.'
+              tags:
+                - tag: component
+                  value: gpu
+                - tag: scope
+                  value: health
+        - uuid: 8f93d56cf693407cb10cc5af02438754
+          name: 'GPU Utilization'
+          key: gpu.util
+          delay: 30s
+          value_type: FLOAT
+          trends: '0'
+          units: '%'
+          description: 'Percentual de utilização do núcleo da GPU. Valores altos indicam processamento intensivo (renderização, IA, gaming)'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: performance
+        - uuid: 58e2f52929294bdabc405c80d02cec5a
+          name: 'GPU UUID'
+          key: gpu.uuid
+          delay: 1h
+          value_type: CHAR
+          description: 'Identificador único universal da GPU'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: identification
+        - uuid: 8e02e2e411504a94af1ebed05ac9bfbd
+          name: 'GPU VBIOS Version'
+          key: gpu.vbios
+          delay: 1h
+          value_type: CHAR
+          description: 'Versão do BIOS da GPU'
+          tags:
+            - tag: component
+              value: gpu
+            - tag: scope
+              value: identification
+      macros:
+        - macro: '{$GPU.FAN.CRIT}'
+          value: '95'
+          description: 'GPU fan speed critical threshold in percent. Default: 95%.'
+        - macro: '{$GPU.FAN.WARN}'
+          value: '85'
+          description: 'GPU fan speed warning threshold in percent. Default: 85%.'
+        - macro: '{$GPU.MEM.UTIL.CRIT}'
+          value: '95'
+          description: 'GPU memory utilization critical threshold in percent. Default: 95%.'
+        - macro: '{$GPU.MEM.UTIL.WARN}'
+          value: '90'
+          description: 'GPU memory utilization warning threshold in percent. Default: 90%.'
+        - macro: '{$GPU.NODATA}'
+          value: 10m
+          description: 'Maximum time without GPU data before generating an alert. Default: 10 minutes.'
+        - macro: '{$GPU.POWER.PCT.CRIT}'
+          value: '98'
+          description: 'Critical threshold for GPU power draw as a percentage of the configured power limit. Default: 98%.'
+        - macro: '{$GPU.POWER.PCT.WARN}'
+          value: '90'
+          description: 'Warning threshold for GPU power draw as a percentage of the configured power limit. Default: 90%.'
+        - macro: '{$GPU.TEMP.CRIT}'
+          value: '90'
+          description: 'GPU temperature critical threshold in degrees Celsius. Default: 90°C.'
+        - macro: '{$GPU.TEMP.WARN}'
+          value: '80'
+          description: 'GPU temperature warning threshold in degrees Celsius. Default: 80°C.'
+        - macro: '{$GPU.UTIL.HIGH}'
+          value: '95'
+          description: 'High GPU utilization threshold in percent. Default: 95%.'

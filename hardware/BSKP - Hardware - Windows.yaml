@@ -1,0 +1,867 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 550e8400e29b41d4a716446655440000
+      name: 'Blackskulp Templates'
+    - uuid: 6b2cb336b5a04b1ab737f42f52304f3d
+      name: hardware
+  templates:
+    - uuid: c4bb1f3a876047c58cc03d305762f91f
+      template: 'BSKP - Hardware - Windows'
+      name: 'BSKP - Hardware - Windows'
+      description: |
+        Template para monitoramento de hardware, sistema operacional, rede, armazenamento e disponibilidade de hosts Windows.
+        
+        Requisitos:
+        - Agente Zabbix instalado e em execução no host Windows
+        - Template vinculado ao host
+        - Macros obrigatórias configuradas:
+          - {$GW_IP}
+          - {$NET.IFACE}
+        - Limites opcionais revisados e ajustados conforme o perfil do equipamento
+        - Verificações ICMP liberadas do Zabbix server/proxy para o gateway e para o alvo externo de teste
+        - Performance counters e consultas WMI disponíveis no host monitorado
+        
+        O monitoramento de filesystem é criado automaticamente por regras de descoberta.
+      vendor:
+        name: bskp
+        version: '1.0'
+      groups:
+        - name: 'Blackskulp Templates'
+        - name: hardware
+      items:
+        - uuid: 0ffe5cef536244cb92216b2687fb03f8
+          name: 'Zabbix agent ping'
+          key: agent.ping
+          description: |
+            O agente Zabbix sempre retorna "1" para este item.
+            
+                Pode ser usado em conjunto com nodata() para verificar disponibilidade.
+            
+                Valores:
+            
+                - 1 = Agente respondendo normalmente
+            
+                - Sem dados = Agente não está respondendo
+          tags:
+            - tag: component
+              value: zabbix
+            - tag: service
+              value: agent
+          triggers:
+            - uuid: 89966e705f284289b26c45ae9a828133
+              expression: 'nodata(/BSKP - Hardware - Windows/agent.ping,5m)=1'
+              name: 'Zabbix Agent No Data'
+              priority: HIGH
+              description: 'O item agent.ping não recebeu dados por 5 minutos. Útil como alerta de ausência total de coleta.'
+              dependencies:
+                - name: 'Zabbix Agent Availability'
+                  expression: 'last(/BSKP - Hardware - Windows/zabbix[host,agent,available])=0'
+              tags:
+                - tag: component
+                  value: zabbix
+                - tag: scope
+                  value: availability
+                - tag: service
+                  value: agent
+        - uuid: c2f00711557f46d394ef71f9bff294ec
+          name: 'Gateway packet loss'
+          type: SIMPLE
+          key: 'icmppingloss[{$GW_IP}]'
+          delay: 5m
+          value_type: FLOAT
+          units: '%'
+          description: 'Percentual de perda de pacotes ao executar ping para o gateway. Valores altos indicam problema de rede local, instabilidade no gateway ou falha de conectividade.'
+          tags:
+            - tag: component
+              value: network
+            - tag: scope
+              value: availability
+          triggers:
+            - uuid: fac3bf45d50841308f03d96b3f7bd428
+              expression: 'avg(/BSKP - Hardware - Windows/icmppingloss[{$GW_IP}],10m)>{$NET.GW.LOSS.MAX}'
+              name: 'Gateway packet loss high'
+              priority: WARNING
+              description: 'A perda média de pacotes para o gateway ficou acima do limite configurado. Isso indica instabilidade local de rede, cabeamento, switch, Wi-Fi ruim ou sobrecarga no gateway.'
+              dependencies:
+                - name: 'Gateway Availability'
+                  expression: 'last(/BSKP - Hardware - Windows/icmpping[{$GW_IP}])=0'
+              tags:
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: availability
+        - uuid: 7c0d190a3e7b4625b609d2fa13384ebb
+          name: 'Network packet loss'
+          type: SIMPLE
+          key: 'icmppingloss[{$NET.PING.TARGET}]'
+          delay: 10m
+          value_type: FLOAT
+          units: '%'
+          description: 'Percentual de perda de pacotes para um destino externo. A macro {$NET.PING.TARGET} deve conter um IP externo, por exemplo 8.8.8.8. Valores altos indicam problema de conectividade com a internet.'
+          tags:
+            - tag: component
+              value: network
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: e1d39641345c4021a1b7a60ec92cdb6c
+              expression: 'avg(/BSKP - Hardware - Windows/icmppingloss[{$NET.PING.TARGET}],15m)>{$NET.PING.LOSS.MAX}'
+              name: 'Network packet loss high'
+              priority: WARNING
+              description: 'A perda média de pacotes para o destino externo definido em {$NET.PING.TARGET} está acima do limite. Indica problema de internet, rota externa ou operadora.'
+              dependencies:
+                - name: 'Gateway Availability'
+                  expression: 'last(/BSKP - Hardware - Windows/icmpping[{$GW_IP}])=0'
+              tags:
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: performance
+        - uuid: 936bb9562b18412fbd91173b0af281fd
+          name: 'Gateway latency'
+          type: SIMPLE
+          key: 'icmppingsec[{$GW_IP}]'
+          delay: 5m
+          value_type: FLOAT
+          units: s
+          description: 'Tempo de resposta do gateway em segundos. Valores altos indicam lentidão na rede local, sobrecarga no gateway ou instabilidade de conectividade.'
+          tags:
+            - tag: component
+              value: network
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: 4746fe4af2854e08a08cc3ec9173a357
+              expression: 'avg(/BSKP - Hardware - Windows/icmppingsec[{$GW_IP}],10m)>{$NET.GW.LAT.MAX}'
+              name: 'Gateway latency high'
+              priority: WARNING
+              description: 'A latência média até o gateway ficou acima do valor esperado. Útil para detectar lentidão local mesmo quando ainda existe conectividade.'
+              dependencies:
+                - name: 'Gateway Availability'
+                  expression: 'last(/BSKP - Hardware - Windows/icmpping[{$GW_IP}])=0'
+              tags:
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: performance
+        - uuid: 3ca83f3264a549c983ee6a821d9dd250
+          name: 'Network latency'
+          type: SIMPLE
+          key: 'icmppingsec[{$NET.PING.TARGET}]'
+          delay: 10m
+          value_type: FLOAT
+          units: s
+          description: 'Tempo de resposta para um destino externo. A macro {$NET.PING.TARGET} deve conter um IP externo, por exemplo 8.8.8.8. Valores altos indicam lentidão de internet ou problema de rota.'
+          tags:
+            - tag: component
+              value: network
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: e2460cd0054c4c049a96a702c11ee2b7
+              expression: 'avg(/BSKP - Hardware - Windows/icmppingsec[{$NET.PING.TARGET}],15m)>{$NET.PING.LAT.MAX}'
+              name: 'Network latency high'
+              priority: WARNING
+              description: 'A latência média para o alvo externo está acima do esperado. Bom para detectar lentidão de internet mesmo sem perda total de acesso.'
+              dependencies:
+                - name: 'Gateway Availability'
+                  expression: 'last(/BSKP - Hardware - Windows/icmpping[{$GW_IP}])=0'
+              tags:
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: performance
+        - uuid: 7bb5c2c156a04878890264d7626942c3
+          name: 'Gateway Availability'
+          type: SIMPLE
+          key: 'icmpping[{$GW_IP}]'
+          delay: 5m
+          description: 'Verifica se o gateway padrão está respondendo. A macro {$GW_IP} deve conter o IP do gateway, por exemplo 192.168.0.1.'
+          tags:
+            - tag: component
+              value: network
+            - tag: scope
+              value: availability
+          triggers:
+            - uuid: 9a85e9d0f7be47fdbd0666f08e689422
+              expression: 'last(/BSKP - Hardware - Windows/icmpping[{$GW_IP}])=0'
+              name: 'Gateway Availability'
+              priority: HIGH
+              description: 'O gateway padrão configurado em {$GW_IP} não está respondendo ao ping. Pode indicar indisponibilidade do roteador, problema local de rede ou perda de conectividade da estação.'
+              tags:
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: availability
+        - uuid: c1de699beea34e8fa21a90c33b5004f8
+          name: 'Network RX total'
+          key: 'net.if.in[{$NET.IFACE}]'
+          units: B
+          description: 'Total de bytes recebidos pela interface de rede. A macro {$NET.IFACE} deve conter o nome da interface a ser monitorada, por exemplo Ethernet.'
+          tags:
+            - tag: component
+              value: network
+        - uuid: c971259c8d1144159bddd8707f08507f
+          name: 'Network TX total'
+          key: 'net.if.out[{$NET.IFACE}]'
+          units: B
+          description: 'Total de bytes transmitidos pela interface de rede. A macro {$NET.IFACE} deve conter o nome da interface a ser monitorada, por exemplo Ethernet.'
+          tags:
+            - tag: component
+              value: network
+        - uuid: 51cdd81c3e064565881fae675dab38be
+          name: 'Memory Page Faults per Second'
+          key: 'perf_counter_en["\Memory\Pages/sec"]'
+          value_type: FLOAT
+          units: pages/sec
+          description: 'Taxa de faltas de página por segundo. Valores altos (>1000) indicam pressão de memória e uso de paginação. É um bom indicador de alerta antecipado.'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: capacity
+        - uuid: b8fd559a1110471d9994a84d224983d0
+          name: 'Swap Usage (%)'
+          key: 'perf_counter_en["\Paging file(_Total)\% Usage"]'
+          value_type: FLOAT
+          units: '%'
+          description: 'Percentual de uso do arquivo de paginação (memória virtual em disco). Valores altos (>20%) indicam forte pressão de memória e degradação de desempenho.'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: capacity
+          triggers:
+            - uuid: bbebff76c99e4e1d9bf1265d20b7d377
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\Paging file(_Total)\% Usage"],10m)>{$SWAP.UTIL.CRIT}'
+              name: 'Swap Usage critical'
+              priority: HIGH
+              description: 'O uso de paginação está em nível crítico. Normalmente indica falta de RAM para a carga atual ou processo consumindo memória de forma excessiva.'
+              dependencies:
+                - name: 'Swap Usage warning'
+                  expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\Paging file(_Total)\% Usage"],10m)>{$SWAP.UTIL.WARN}'
+              tags:
+                - tag: component
+                  value: memory
+                - tag: scope
+                  value: capacity
+            - uuid: 00626463454c4071905ab2684d5105f1
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\Paging file(_Total)\% Usage"],10m)>{$SWAP.UTIL.WARN}'
+              name: 'Swap Usage warning'
+              priority: WARNING
+              description: 'O uso do arquivo de paginação está acima do nível aceitável. Isso indica pressão de memória e possível degradação de desempenho.'
+              tags:
+                - tag: component
+                  value: memory
+                - tag: scope
+                  value: capacity
+        - uuid: 9c696449facb4eeaa7bab2326cdb78ac
+          name: 'Disk idle time'
+          key: 'perf_counter_en["\PhysicalDisk(_Total)\% Idle Time"]'
+          value_type: FLOAT
+          trends: '0'
+          units: '%'
+          description: 'Percentual de tempo em que o disco permanece ocioso. Valores baixos (<30%) indicam disco muito ocupado.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: 448e5f2f3f794f8f99842d1c166b9404
+              expression: 'max(/BSKP - Hardware - Windows/perf_counter_en["\PhysicalDisk(_Total)\% Idle Time"],10m)<{$DISK.IDLE.MIN}'
+              name: 'Disk idle time low'
+              priority: WARNING
+              description: 'O disco permaneceu com pouco tempo ocioso nos últimos 10 minutos. Isso indica atividade intensa e sustentada de I/O.'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: performance
+        - uuid: 042b2c3928194f81980b4aeefcc18cce
+          name: 'Disk queue length'
+          key: 'perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk Queue Length"]'
+          value_type: FLOAT
+          trends: '0'
+          description: 'Quantidade de operações de disco aguardando na fila. Valores altos indicam congestionamento de I/O e atividade de disco sobrecarregada.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: a05dbb456c59407398660110c49b4cf3
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk Queue Length"],5m)>{$DISK.QUEUE.MAX}'
+              name: 'Disk queue length high'
+              priority: WARNING
+              description: 'A fila média de disco está acima do aceitável. Pode indicar storage saturado, lentidão no backend ou carga excessiva de leitura/escrita.'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: performance
+        - uuid: b6a4095b62d64a00942250730df3940a
+          name: 'Disk read latency'
+          type: SIMPLE
+          key: 'perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Read"]'
+          value_type: FLOAT
+          trends: '0'
+          units: s
+          description: 'Latência média para operações de leitura. Valores altos indicam problema no disco ou controladora.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: b9e58ee9d1c64d85bc0ddefe08e15aa7
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Read"],5m)>{$DISK.LAT.CRIT}'
+              name: 'Disk read latency high'
+              priority: WARNING
+              description: 'A latência média de leitura do disco está acima do limite. Pode indicar gargalo de leitura, contenção do storage ou início de degradação.'
+              dependencies:
+                - name: 'Disk average latency high'
+                  expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Transfer"],5m)>{$DISK.LAT.CRIT}'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: performance
+        - uuid: d06db3040eff4790ba59b2055b3c7619
+          name: 'Disk average latency'
+          type: SIMPLE
+          key: 'perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Transfer"]'
+          value_type: FLOAT
+          trends: '0'
+          units: s
+          description: 'Latência média das operações de disco. Valores altos (>0.1s) indicam disco degradado, sobrecarregado ou potencialmente falhando.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: ab22f9d135ca4805bc3ccf5b2e93c073
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Transfer"],5m)>{$DISK.LAT.CRIT}'
+              name: 'Disk average latency high'
+              priority: HIGH
+              description: 'A latência média geral do disco está acima do limite crítico. Esse é um dos principais indicadores de degradação de storage ou sobrecarga de I/O.'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: performance
+        - uuid: eb8199e16d954b54b7dac892ed397470
+          name: 'Disk write latency'
+          type: SIMPLE
+          key: 'perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Write"]'
+          value_type: FLOAT
+          trends: '0'
+          units: s
+          description: 'Latência média para operações de escrita. Valores altos indicam problema no disco ou controladora.'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: 86960381afc6489eb162cd91ad9e4fe6
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Write"],5m)>{$DISK.LAT.CRIT}'
+              name: 'Disk write latency high'
+              priority: WARNING
+              description: 'A latência média de escrita do disco está acima do limite. Indica gargalo de gravação, fila elevada ou storage degradado.'
+              dependencies:
+                - name: 'Disk average latency high'
+                  expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\PhysicalDisk(_Total)\Avg. Disk sec/Transfer"],5m)>{$DISK.LAT.CRIT}'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: scope
+                  value: performance
+        - uuid: 1d747464352a4537b1c742520b45fa24
+          name: 'Disk read rate'
+          key: 'perf_counter_en["\PhysicalDisk(_Total)\Disk Read Bytes/sec"]'
+          value_type: FLOAT
+          trends: '0'
+          units: B/s
+          description: 'Vazão de leitura do disco em bytes por segundo. Valores altos indicam atividade intensa de leitura (backup, varredura de antivírus, etc.).'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+        - uuid: fa596235b9e94d6b9e4045aa82aa9529
+          name: 'Disk write rate'
+          key: 'perf_counter_en["\PhysicalDisk(_Total)\Disk Write Bytes/sec"]'
+          value_type: FLOAT
+          trends: '0'
+          units: B/s
+          description: 'Vazão de escrita do disco em bytes por segundo. Valores altos indicam atividade intensa de escrita (backup, logs, etc.).'
+          tags:
+            - tag: component
+              value: storage
+            - tag: scope
+              value: performance
+        - uuid: 3e88ab1ea2934458ac1fcf5f4b97aea9
+          name: 'CPU Interrupt Time'
+          key: 'perf_counter_en["\Processor Information(_total)\% Interrupt Time"]'
+          value_type: FLOAT
+          units: '%'
+          description: 'Percentual de tempo da CPU gasto tratando interrupções de hardware. Valores altos (>20%) indicam problema de driver ou hardware.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: 35d9b7ad6e764abc8007eaa944785007
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\Processor Information(_total)\% Interrupt Time"],5m)>{$CPU.INTERRUPT.CRIT.MAX}'
+              name: 'CPU Interrupt Time high'
+              priority: WARNING
+              description: 'O tempo gasto pela CPU tratando interrupções de hardware ficou acima do normal. Pode indicar problema de driver, placa de rede, storage, controladora ou outro componente físico.'
+              tags:
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
+        - uuid: 8090c1c82ade436e9eb613d4478ad1dd
+          name: 'CPU Privileged Time'
+          key: 'perf_counter_en["\Processor Information(_total)\% Privileged Time"]'
+          value_type: FLOAT
+          units: '%'
+          description: 'Percentual de tempo da CPU gasto em modo privilegiado (kernel). Valores altos (>30%) indicam problema de driver, antivírus ou I/O.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: c0b57d9200a44138af5db87885d67ee6
+              expression: 'avg(/BSKP - Hardware - Windows/perf_counter_en["\Processor Information(_total)\% Privileged Time"],5m)>{$CPU.PRIV.CRIT.MAX}'
+              name: 'CPU Privileged Time high'
+              priority: WARNING
+              description: 'A CPU está gastando muito tempo em modo privilegiado/kernel. Pode apontar para excesso de I/O, antivírus, drivers ou comportamento anormal do sistema operacional.'
+              tags:
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
+        - uuid: d5cc1101d0d842e19d58b7a389e36e88
+          name: 'Context switches per second'
+          key: 'perf_counter_en["\System\Context Switches/sec"]'
+          value_type: FLOAT
+          units: switches/sec
+          description: 'Taxa de troca de contexto por segundo. Valores altos (>10000) indicam contenção de CPU ou muitos processos simultâneos.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+        - uuid: 97c6ed9b61ac4d888ef1b9380687f9f5
+          name: 'CPU Queue Length'
+          key: 'perf_counter_en["\System\Processor Queue Length"]'
+          description: 'Número de threads aguardando tempo de CPU. Valores altos indicam contenção de processador.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+          triggers:
+            - uuid: 55612d20e4fe4391a3087b308dcf5c9a
+              expression: 'min(/BSKP - Hardware - Windows/perf_counter_en["\System\Processor Queue Length"],5m)>{$CPU.QUEUE.CRIT.MAX}'
+              name: 'CPU Queue Length high'
+              priority: WARNING
+              description: 'Há threads aguardando CPU de forma sustentada. Normalmente indica contenção de processamento ou número insuficiente de recursos para a carga atual.'
+              tags:
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
+        - uuid: 843169579cdf4a7da40f5ff9b8d98380
+          name: 'Number of threads'
+          key: 'perf_counter_en["\System\Threads"]'
+          value_type: FLOAT
+          description: 'Número total de threads em execução. Valores altos indicam muitos processos ou aplicações com muitas threads.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+        - uuid: d0ba6e7eaac84f34b8cf4de4ad78a21a
+          name: 'Number of Processes'
+          key: 'proc.num[]'
+          description: 'Número total de processos em execução. Valores altos podem indicar vazamento de processo ou aplicação problemática.'
+          tags:
+            - tag: component
+              value: system
+            - tag: os
+              value: windows
+        - uuid: 80d9509f26044b91abad00841921b9ae
+          name: 'System CPU load (1 min)'
+          key: 'system.cpu.load[percpu,avg1]'
+          value_type: FLOAT
+          description: 'Carga média do sistema no último minuto (normalizada por CPU). Valores > 1 indicam alta carga.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+        - uuid: 55659cad223d4927a37df0b6fe5ba67f
+          name: 'System CPU load (5 min)'
+          key: 'system.cpu.load[percpu,avg5]'
+          value_type: FLOAT
+          description: 'Carga média do sistema nos últimos 5 minutos (normalizada por CPU). Um indicador de tendência melhor que 1 minuto.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+        - uuid: 01308e9e5aae412e9a967e22df3acb51
+          name: 'System CPU load (15 min)'
+          key: 'system.cpu.load[percpu,avg15]'
+          value_type: FLOAT
+          description: 'Carga média do sistema nos últimos 15 minutos (normalizada por CPU). Indica carga sustentada do sistema.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+        - uuid: 836503bddc0f4fb7bca7e8834e039879
+          name: 'System CPU count'
+          key: system.cpu.num
+          delay: 1h
+          description: 'Número de processadores (CPUs) do sistema. Valor estático, coletado uma vez por hora.'
+          tags:
+            - tag: component
+              value: cpu
+        - uuid: b69d9109d8d14574a17d9a4bcb057f20
+          name: 'CPU utilization'
+          key: system.cpu.util
+          value_type: FLOAT
+          units: '%'
+          description: 'Percentual de utilização da CPU. Valores: 0-50% Normal, 50-80% Alta, 80-90% Crítica, >90% Muito crítica.'
+          tags:
+            - tag: component
+              value: cpu
+            - tag: scope
+              value: performance
+        - uuid: d009de153f8346929b20f54b53dc2661
+          name: 'System name'
+          key: system.hostname
+          delay: 1h
+          value_type: CHAR
+          description: 'Nome do computador (hostname). Detecta se o host foi renomeado ou reinstalado.'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 7b74f4e4b0c14a2dbb44af2a97b4a141
+          name: 'Operating system'
+          key: system.sw.os
+          delay: 1h
+          value_type: CHAR
+          description: 'Descrição do sistema operacional. Detecta atualizações ou mudanças de SO.'
+          preprocessing:
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1d
+          tags:
+            - tag: component
+              value: os
+            - tag: os
+              value: windows
+        - uuid: 74d4c38b194e4634b206ad83b7aa738d
+          name: 'System uptime'
+          key: system.uptime
+          delay: 30s
+          units: uptime
+          description: 'Tempo que o sistema está em execução desde a última inicialização. Detecta reinicializações inesperadas.'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: c926f3ee432e42d880a089b47863cf62
+              expression: 'change(/BSKP - Hardware - Windows/system.uptime)<0'
+              name: 'System reboot detected'
+              priority: INFO
+              description: 'Detecta reinicialização do host ao identificar queda brusca no uptime. Muito mais confiável para evento de reboot do que apenas verificar uptime baixo.'
+              tags:
+                - tag: component
+                  value: system
+                - tag: scope
+                  value: availability
+        - uuid: fe47bdb4e5a84ad3a8b62019034b1680
+          name: 'Get filesystems'
+          key: vfs.fs.get
+          delay: 1h
+          value_type: TEXT
+          description: 'Coleta informações brutas sobre todos os sistemas de arquivos. Os dados são processados por itens dependentes (regra de descoberta).'
+          tags:
+            - tag: component
+              value: filesystem
+        - uuid: b94a12b71f274d748f81e32f00226939
+          name: 'Available Memory'
+          key: 'vm.memory.size[available]'
+          units: B
+          description: 'Quantidade de memória disponível para alocação. Inclui cache e buffers recuperáveis. Melhor indicador de pressão de memória do que "usada".'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: capacity
+          triggers:
+            - uuid: cf953b7070584eb2900bec57fa498783
+              expression: 'max(/BSKP - Hardware - Windows/vm.memory.size[available],5m)<{$MEM.AVAIL.CRIT}'
+              name: 'Available Memory critical'
+              priority: HIGH
+              description: 'A memória disponível ficou abaixo do limite crítico durante os últimos 5 minutos. Esse trigger é mais confiável do que olhar apenas memória usada, porque mostra pressão real de RAM.'
+              tags:
+                - tag: component
+                  value: memory
+                - tag: scope
+                  value: capacity
+        - uuid: a5274734e53b44b5af3354ccf39939ac
+          name: 'Memory Cache'
+          key: 'vm.memory.size[cached]'
+          units: B
+          description: 'Quantidade de memória usada para cache de disco. Pode ser liberada se necessário. Não é "memória perdida".'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: capacity
+        - uuid: e758ae835e654c89b8e41d3a9f6c90f2
+          name: 'Total memory'
+          key: 'vm.memory.size[total]'
+          delay: 1h
+          units: B
+          description: 'Total de RAM instalada em bytes. Valor estático, coletado uma vez por hora.'
+          tags:
+            - tag: component
+              value: memory
+        - uuid: dd70f25bc13f46219543a848286415e6
+          name: 'Used Memory'
+          key: 'vm.memory.size[used]'
+          units: B
+          description: 'Quantidade de RAM atualmente em uso. Monitora o consumo de memória em tempo real.'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: capacity
+        - uuid: 131b96913fbc4ad998efc4100402db69
+          name: 'Memory utilization'
+          type: CALCULATED
+          key: vm.memory.util
+          value_type: FLOAT
+          units: '%'
+          params: 'last(//vm.memory.size[used]) / last(//vm.memory.size[total]) * 100'
+          description: 'Percentual de utilização da RAM. Calculado a partir da memória usada dividida pela memória total.'
+          tags:
+            - tag: component
+              value: memory
+            - tag: scope
+              value: capacity
+          triggers:
+            - uuid: 2f6f5cc06756472f8e1d49e978661e19
+              expression: 'min(/BSKP - Hardware - Windows/vm.memory.util,5m)>{$MEM.UTIL.MAX}'
+              name: 'Memory Utilization high'
+              priority: WARNING
+              description: 'A utilização de memória permaneceu acima do limite definido. Indica alto consumo sustentado de RAM e pode antecipar uso de paginação/swap.'
+              tags:
+                - tag: component
+                  value: memory
+                - tag: scope
+                  value: capacity
+        - uuid: 8a927a58f91d47f7b9940fc9508573a7
+          name: 'Number of CPU cores'
+          key: 'wmi.get[root/cimv2,"Select NumberOfLogicalProcessors from Win32_ComputerSystem"]'
+          delay: 1h
+          description: 'Número de núcleos de processador lógicos. Valor estático, coletado uma vez por hora.'
+          tags:
+            - tag: component
+              value: cpu
+        - uuid: e012a46203bf403a99bf10cf535bcc71
+          name: 'Zabbix Agent Availability'
+          type: INTERNAL
+          key: 'zabbix[host,agent,available]'
+          description: |
+            Monitora o status de disponibilidade do agente Zabbix.
+            
+                Este é um item INTERNO que verifica se o agente está respondendo
+                ao servidor/proxy Zabbix.
+            
+                Valores:
+            
+                - 1 = Agente disponível e respondendo
+            
+                - 0 = Agente indisponível (não respondendo)
+            
+                Diferença de agent.ping:
+            
+                - agent.ping: Verifica a resposta do agente (passivo)
+            
+                - zabbix[host,agent,available]: Verifica o status no lado do servidor (ativo)
+          tags:
+            - tag: component
+              value: zabbix
+            - tag: service
+              value: agent
+          triggers:
+            - uuid: b950dc0899ac425a98b963f080acae31
+              expression: 'last(/BSKP - Hardware - Windows/zabbix[host,agent,available])=0'
+              name: 'Zabbix Agent Availability'
+              priority: HIGH
+              description: 'O servidor/proxy Zabbix não está conseguindo se comunicar com o agente deste host. Normalmente indica serviço parado, bloqueio de rede/firewall ou host indisponível.'
+              tags:
+                - tag: component
+                  value: zabbix
+                - tag: scope
+                  value: availability
+                - tag: service
+                  value: agent
+      discovery_rules:
+        - uuid: fb2c61083a6342d88725cc4649b65cfc
+          name: 'Filesystem discovery'
+          key: vfs.fs.discovery
+          delay: 1h
+          description: 'Regra de descoberta que encontra automaticamente todos os sistemas de arquivos. Cria itens dinâmicos para monitorar o espaço em disco de cada volume.'
+          item_prototypes:
+            - uuid: f400bd7429dc4e0b96437c2ab8893e16
+              name: 'Disk {#FSNAME} Free space'
+              key: 'vfs.fs.size[{#FSNAME},free]'
+              delay: 1h
+              units: B
+              description: 'Espaço livre em cada disco. Item criado automaticamente pela regra de descoberta para cada volume detectado.'
+              tags:
+                - tag: component
+                  value: filesystem
+                - tag: scope
+                  value: capacity
+            - uuid: 4e70657c67ed4e1f817f658b1016f8c6
+              name: 'Disk {#FSNAME} used %'
+              key: 'vfs.fs.size[{#FSNAME},pused]'
+              delay: 1h
+              value_type: FLOAT
+              units: '%'
+              description: 'Percentual de espaço usado em cada disco. Item criado automaticamente pela regra de descoberta para cada volume detectado.'
+              tags:
+                - tag: component
+                  value: filesystem
+                - tag: scope
+                  value: capacity
+              trigger_prototypes:
+                - uuid: c44c7e4db03e4b52b03ce4bd2c309ead
+                  expression: 'last(/BSKP - Hardware - Windows/vfs.fs.size[{#FSNAME},pused])>{$FS.PUSED.CRIT}'
+                  name: 'Disk {#FSNAME} used % critical'
+                  priority: HIGH
+                  description: 'O volume {#FSNAME} atingiu nível crítico de ocupação. Há risco de falha em aplicações, logs, banco de dados ou serviços que dependem de espaço livre.'
+                  tags:
+                    - tag: component
+                      value: filesystem
+                    - tag: scope
+                      value: capacity
+                - uuid: a150db5b77e749fab86095112c8695e6
+                  expression: 'last(/BSKP - Hardware - Windows/vfs.fs.size[{#FSNAME},pused])>{$FS.PUSED.WARN}'
+                  name: 'Disk {#FSNAME} used % warning'
+                  priority: WARNING
+                  description: 'O volume {#FSNAME} ultrapassou o limite de uso configurado para warning. Serve para antecipar falta de espaço antes de atingir condição crítica.'
+                  tags:
+                    - tag: component
+                      value: filesystem
+                    - tag: scope
+                      value: capacity
+            - uuid: 94010b1ca2f440c18a54d6339ff311df
+              name: 'Disk {#FSNAME} total size'
+              key: 'vfs.fs.size[{#FSNAME},total]'
+              delay: 1h
+              units: B
+              description: 'Tamanho total de cada disco. Item criado automaticamente pela regra de descoberta para cada volume detectado.'
+              tags:
+                - tag: component
+                  value: filesystem
+                - tag: scope
+                  value: capacity
+            - uuid: 45de626d96f344f1aa46ee1136ad0e6b
+              name: 'Disk {#FSNAME} used space'
+              key: 'vfs.fs.size[{#FSNAME},used]'
+              delay: 1h
+              units: B
+              description: 'Espaço usado em cada disco. Item criado automaticamente pela regra de descoberta para cada volume detectado.'
+              tags:
+                - tag: component
+                  value: filesystem
+                - tag: scope
+                  value: capacity
+      tags:
+        - tag: class
+          value: hardware
+        - tag: os
+          value: windows
+      macros:
+        - macro: '{$AGENT.TIMEOUT}'
+          value: 30s
+          description: 'Timeout para considerar o agente indisponível. Padrão: 30 segundos.'
+        - macro: '{$CPU.INTERRUPT.CRIT.MAX}'
+          value: '20'
+          description: 'Percentual máximo de tempo da CPU gasto em interrupções. Padrão: 20%.'
+        - macro: '{$CPU.PRIV.CRIT.MAX}'
+          value: '30'
+          description: 'Percentual máximo de tempo da CPU gasto em modo privilegiado (kernel). Padrão: 30%.'
+        - macro: '{$CPU.QUEUE.CRIT.MAX}'
+          value: '2'
+          description: 'Tamanho máximo da fila de CPU antes do alerta. Padrão: 2.'
+        - macro: '{$CPU.UTIL.MAX}'
+          value: '90'
+          description: 'Percentual máximo de utilização da CPU antes do alerta. Padrão: 90%.'
+        - macro: '{$DISK.IDLE.MIN}'
+          value: '30'
+          description: 'Percentual mínimo aceitável de tempo ocioso do disco. Abaixo disso, o disco está muito ocupado.'
+        - macro: '{$DISK.LAT.CRIT}'
+          value: '0.1'
+          description: 'Latência máxima do disco em segundos (padrão: 100ms). Valores altos indicam disco degradado.'
+        - macro: '{$DISK.QUEUE.MAX}'
+          value: '2'
+          description: 'Tamanho máximo aceitável da fila média de disco.'
+        - macro: '{$DISK.READ.MAX}'
+          value: '104857600'
+          description: 'Vazão máxima de leitura do disco em bytes/seg (padrão: 100MB/s). Ajustar conforme o perfil do host.'
+        - macro: '{$DISK.WRITE.MAX}'
+          value: '104857600'
+          description: 'Vazão máxima de escrita do disco em bytes/seg (padrão: 100MB/s). Ajustar conforme o perfil do host.'
+        - macro: '{$FS.PUSED.CRIT}'
+          value: '90'
+          description: 'Percentual de disco usado que dispara um alerta crítico. Padrão: 90%.'
+        - macro: '{$FS.PUSED.WARN}'
+          value: '80'
+          description: 'Percentual de disco usado que dispara um alerta de warning. Padrão: 80%.'
+        - macro: '{$GW_IP}'
+          value: IP_GATEWAY
+          description: 'IP do gateway padrão (por exemplo: 192.168.0.1). Configurar por host.'
+        - macro: '{$MEM.AVAIL.CRIT}'
+          value: '536870912'
+          description: 'Memória disponível crítica em bytes (padrão: 512MB). Ajustar conforme a RAM instalada.'
+        - macro: '{$MEM.UTIL.MAX}'
+          value: '90'
+          description: 'Percentual máximo de utilização da memória antes do alerta. Padrão: 90%.'
+        - macro: '{$NET.GW.LAT.MAX}'
+          value: '0.05'
+          description: 'Latência máxima do gateway em segundos (padrão: 50ms). Ajustar conforme sua rede.'
+        - macro: '{$NET.GW.LOSS.MAX}'
+          value: '20'
+          description: 'Percentual máximo de perda de pacotes para o gateway. Padrão: 20%.'
+        - macro: '{$NET.IFACE}'
+          value: 'INTERFACE NAME'
+          description: 'Nome da interface de rede a ser monitorada (por exemplo: Ethernet, WiFi). Configurar por host.'
+        - macro: '{$NET.PING.LAT.MAX}'
+          value: '0.2'
+          description: 'Latência máxima de ping externo em segundos (padrão: 200ms). Ajustar conforme sua conexão de internet.'
+        - macro: '{$NET.PING.LOSS.MAX}'
+          value: '20'
+          description: 'Percentual máximo de perda de pacotes para o alvo de ping externo. Padrão: 20%. Ajustar conforme o perfil da conexão de internet.'
+        - macro: '{$NET.PING.TARGET}'
+          value: 8.8.8.8
+          description: 'IP externo para teste de conectividade (padrão: 8.8.8.8 - Google DNS).'
+        - macro: '{$SWAP.UTIL.CRIT}'
+          value: '50'
+          description: 'Percentual crítico de uso de swap. Padrão: 50%. Valores altos indicam forte pressão de memória e degradação de desempenho.'
