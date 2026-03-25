@@ -149,6 +149,7 @@ Documentação complementar: [hardware/README.md](./hardware/README.md)
 ### Network
 
 - `BSKP - Network - Internet Speedtest.yaml`
+- `BSKP - Network - Zabbix Proxy.yaml`
 - `BSKP - Network - MikroTik RB3011UiAS-RM by SNMP.yaml`
 - `BSKP - Network - Unifi SNMP V3.yaml`
 
