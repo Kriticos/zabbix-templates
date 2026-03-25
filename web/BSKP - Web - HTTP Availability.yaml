@@ -2,7 +2,7 @@ zabbix_export:
   version: '7.4'
   template_groups:
     - uuid: 550e8400e29b41d4a716446655440000
-      name: 'bskp Templates'
+      name: 'Blackskulp Templates'
   templates:
     - uuid: cf0ab4299e314ddbbff027223183fabe
       template: 'BSKP - Web - HTTP Availability'
@@ -14,7 +14,7 @@ zabbix_export:
         name: bskp
         version: 1.0-1
       groups:
-        - name: 'bskp Templates'
+        - name: 'Blackskulp Templates'
       httptests:
         - uuid: eb01f8af5afd4f65b60054bf9617b49d
           name: 'Check Website - {$SITE}'
@@ -22,6 +22,11 @@ zabbix_export:
             - name: 'Check Website - {$SITE}'
               url: '{$SITE}'
               status_codes: '{$STATUS}'
+      tags:
+        - tag: class
+          value: web
+        - tag: target
+          value: sites
       macros:
         - macro: '{$SITE}'
           description: 'Target domain'
@@ -32,4 +37,7 @@ zabbix_export:
       name: '{HOST.NAME} - {$SITE} is unavailable (HTTP invalid response)'
       priority: HIGH
       tags:
-        - tag: Web
+        - tag: check
+          value: http
+        - tag: scope
+          value: web
