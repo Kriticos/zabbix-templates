@@ -1,0 +1,85 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 550e8400e29b41d4a716446655440000
+      name: 'Blackskulp Templates'
+  templates:
+    - uuid: 4793127dfe11451fbc3e55e1a6a0e655
+      template: 'BSKP - Network - Zabbix Proxy'
+      name: 'BSKP - Network - Zabbix Proxy'
+      groups:
+        - name: 'Blackskulp Templates'
+      items:
+        - uuid: eebe6aea23d84f048a85ca510ad07495
+          name: 'SNT - SNT - ICMP loss'
+          type: SIMPLE
+          key: 'icmppingloss[{$SNT.IP}]'
+          value_type: FLOAT
+          units: '%'
+          triggers:
+            - uuid: f34810bc38e74d9a9e3f75f14e2f28ec
+              expression: 'min(/BSKP - Network - Zabbix Proxy/icmppingloss[{$SNT.IP}],3m)>{$SNT.LOSS.HIGH}'
+              name: '{HOST.NAME} - Packet loss high'
+              priority: HIGH
+              manual_close: 'YES'
+              dependencies:
+                - name: '{HOST.NAME} - Proxy offline (ICMP)'
+                  expression: 'max(/BSKP - Network - Zabbix Proxy/icmpping[{$SNT.IP}],3m)=0'
+            - uuid: 80074edb8f7b46ada9e2e2022e0637d2
+              expression: 'min(/BSKP - Network - Zabbix Proxy/icmppingloss[{$SNT.IP}],3m)>{$SNT.LOSS.WARN}'
+              name: '{HOST.NAME} - Packet loss warning'
+              priority: WARNING
+              manual_close: 'YES'
+              dependencies:
+                - name: '{HOST.NAME} - Packet loss high'
+                  expression: 'min(/BSKP - Network - Zabbix Proxy/icmppingloss[{$SNT.IP}],3m)>{$SNT.LOSS.HIGH}'
+                - name: '{HOST.NAME} - Proxy offline (ICMP)'
+                  expression: 'max(/BSKP - Network - Zabbix Proxy/icmpping[{$SNT.IP}],3m)=0'
+        - uuid: b917728d1c6a4167a3ee524442627348
+          name: 'SNT - ICMP response time'
+          type: SIMPLE
+          key: 'icmppingsec[{$SNT.IP}]'
+          value_type: FLOAT
+          units: s
+          triggers:
+            - uuid: 88f45946f77a41f0ba5e25f700394c7b
+              expression: 'min(/BSKP - Network - Zabbix Proxy/icmppingsec[{$SNT.IP}],3m)>{$SNT.RTT.HIGH}'
+              name: '{HOST.NAME} - RTT high'
+              priority: HIGH
+              manual_close: 'YES'
+              dependencies:
+                - name: '{HOST.NAME} - Proxy offline (ICMP)'
+                  expression: 'max(/BSKP - Network - Zabbix Proxy/icmpping[{$SNT.IP}],3m)=0'
+        - uuid: 58a10591f8664f509a0184d4f71533a4
+          name: 'SNT - ICMP ping'
+          type: SIMPLE
+          key: 'icmpping[{$SNT.IP}]'
+          triggers:
+            - uuid: 406cf5142bc74929a4a33b7abd2a83d5
+              expression: 'max(/BSKP - Network - Zabbix Proxy/icmpping[{$SNT.IP}],3m)=0'
+              name: '{HOST.NAME} - Proxy offline (ICMP)'
+              priority: HIGH
+              manual_close: 'YES'
+      macros:
+        - macro: '{$SNT.IP}'
+          description: 'IP do Zabbix Proxy'
+        - macro: '{$SNT.LOSS.HIGH}'
+          value: '50'
+          description: '% perda p/ High'
+        - macro: '{$SNT.LOSS.WARN}'
+          value: '20'
+          description: '% perda p/ Warning'
+        - macro: '{$SNT.RTT.HIGH}'
+          value: '150'
+          description: 'ms p/ High'
+        - macro: '{$SNT.RTT.WARN}'
+          value: '80'
+          description: 'ms p/ Warning'
+      valuemaps:
+        - uuid: bce16b570a184efcb0c08338bfdbe353
+          name: icmpping
+          mappings:
+            - value: '0'
+              newvalue: Down
+            - value: '1'
+              newvalue: Up
